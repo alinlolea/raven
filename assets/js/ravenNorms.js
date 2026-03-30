@@ -2,10 +2,10 @@
   "use strict";
 
   const CSV_PATHS = [
-    "/assets/data/raven.csv",
-    "/assets/data/Raven.csv",
+    "./assets/data/Raven.csv",
     "./assets/data/raven.csv",
-    "./assets/data/Raven.csv"
+    "/assets/data/Raven.csv",
+    "/assets/data/raven.csv"
   ];
 
   /** @type {RavenNormsTables | null} */
@@ -347,9 +347,25 @@
     throw lastErr || new Error("Raven CSV: fetch failed for all paths.");
   }
 
-  const ready = loadRavenCsv().catch(() => {
-    tables = null;
-  });
+  const ready = loadRavenCsv()
+    .then((parsed) => {
+      queueMicrotask(() => {
+        if (typeof window.dispatchEvent === "function") {
+          window.dispatchEvent(new CustomEvent("ravenNormsLoaded", { detail: { ok: true } }));
+        }
+      });
+      return parsed;
+    })
+    .catch((err) => {
+      tables = null;
+      queueMicrotask(() => {
+        if (typeof window.dispatchEvent === "function") {
+          window.dispatchEvent(
+            new CustomEvent("ravenNormsLoaded", { detail: { ok: false, error: String(err) } })
+          );
+        }
+      });
+    });
 
   window.getSPMPlus = getSPMPlus;
   window.getResult = getResult;

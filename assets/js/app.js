@@ -1,6 +1,12 @@
 (() => {
   "use strict";
 
+  const ANSWER_MIN = 1;
+  const ANSWER_MAX = 8;
+
+  /** @type {"pending"|"ok"|"failed"} */
+  let ravenNormsStatus = "pending";
+
   const TEST_DEFINITIONS = {
     standard: { label: "Standard", items: 60 },
     plus: { label: "Plus", items: 30 },
@@ -177,16 +183,15 @@
     const total = getItemCount();
     dom.answersHint.textContent =
       state.inputMode === "individual"
-        ? `Enter values 1–6 (${total} items).`
-        : `Paste values 1–6 separated by spaces/newlines (${total} items max).`;
+        ? `Enter values ${ANSWER_MIN}–${ANSWER_MAX} (${total} items).`
+        : `Paste values ${ANSWER_MIN}–${ANSWER_MAX} separated by spaces/newlines (${total} items max).`;
   }
 
   function parseBulk(text) {
-    // Capture integers and keep those between 1 and 6.
     const found = String(text)
       .match(/\d+/g)
       ?.map((t) => Number(t))
-      .filter((n) => Number.isFinite(n) && n >= 1 && n <= 6) || [];
+      .filter((n) => Number.isFinite(n) && n >= ANSWER_MIN && n <= ANSWER_MAX) || [];
     return found;
   }
 
@@ -269,10 +274,16 @@
 
       spmPlus = window.getSPMPlus(rawScore);
       if (spmPlus === null || spmPlus === undefined) {
-        dom.interpretation.textContent = dash;
+        if (ravenNormsStatus === "pending") {
+          dom.interpretation.textContent = "Se încarcă normele…";
+        } else if (ravenNormsStatus === "failed") {
+          dom.interpretation.textContent = "Norme indisponibile (CSV).";
+        } else {
+          dom.interpretation.textContent = dash;
+        }
         ageIndex = null;
         result = null;
-        console.log({ rawScore, spmPlus, ageIndex, result });
+        console.log({ rawScore, spmPlus, ageIndex, result, ravenNormsStatus });
         return;
       }
 
@@ -347,7 +358,7 @@
     if (state.testType !== "standard" || state.answers[index] === "") return;
     const expected = getStandardExpectedAnswer(index);
     const v = state.answers[index];
-    if (v === expected) box.classList.add("correct");
+    if (Number(v) === Number(expected)) box.classList.add("correct");
     else box.classList.add("incorrect");
   }
 
@@ -360,12 +371,11 @@
   }
 
   function clampAnswerValue(raw) {
-    // Allow the input to be cleared.
     if (raw === "" || raw === null || raw === undefined) return "";
     const n = Number(raw);
     if (!Number.isFinite(n)) return "";
-    if (n < 1) return 1;
-    if (n > 6) return 6;
+    if (n < ANSWER_MIN) return ANSWER_MIN;
+    if (n > ANSWER_MAX) return ANSWER_MAX;
     return n;
   }
 
@@ -430,8 +440,8 @@
       const input = document.createElement("input");
       input.type = "number";
       input.inputMode = "numeric";
-      input.min = "1";
-      input.max = "6";
+      input.min = String(ANSWER_MIN);
+      input.max = String(ANSWER_MAX);
       input.step = "1";
       input.placeholder = state.testType === "standard" ? standardCellName : "—";
       input.className = "answerInput";
@@ -526,7 +536,7 @@
     const textarea = document.createElement("textarea");
     textarea.className = "bulkArea";
     textarea.id = "bulkAnswers";
-    textarea.placeholder = "Paste answers here (values 1–6). Example: 1 2 3 4 5 …";
+    textarea.placeholder = `Paste answers here (values ${ANSWER_MIN}–${ANSWER_MAX}). Example: 1 2 3 4 5 …`;
     textarea.setAttribute("aria-label", "Bulk answers input");
 
     textarea.addEventListener("input", () => {
@@ -714,6 +724,13 @@
 
     dom.exportPdfBtn.addEventListener("click", exportPdf);
     dom.shareBtn.addEventListener("click", share);
+
+    window.addEventListener("ravenNormsLoaded", (ev) => {
+      const d = ev && /** @type {CustomEvent} */ (ev).detail;
+      if (d && d.ok) ravenNormsStatus = "ok";
+      else ravenNormsStatus = "failed";
+      updateResults();
+    });
   }
 
   function initOfflineIndicator() {
@@ -744,8 +761,16 @@
     updateAgeUI();
     syncSelectionsAndRender();
     void Promise.resolve(window.RavenNorms && window.RavenNorms.ready)
-      .then(() => updateResults())
-      .catch(() => updateResults());
+      .then(() => {
+        if (ravenNormsStatus === "pending" && window.RavenNorms && window.RavenNorms._getTables && window.RavenNorms._getTables()) {
+          ravenNormsStatus = "ok";
+        }
+        updateResults();
+      })
+      .catch(() => {
+        ravenNormsStatus = "failed";
+        updateResults();
+      });
   }
 
   init();
