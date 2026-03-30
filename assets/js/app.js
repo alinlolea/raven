@@ -20,10 +20,13 @@
     testTypeGroup: document.getElementById("testTypeGroup"),
     inputModeGroup: document.getElementById("inputModeGroup"),
     clientName: document.getElementById("clientName"),
-    age: document.getElementById("age"),
+    ageYears: document.getElementById("ageYears"),
+    ageMonths: document.getElementById("ageMonths"),
+    ageGroupLine: document.getElementById("ageGroupLine"),
+    ageWarnLine: document.getElementById("ageWarnLine"),
     answersHint: document.getElementById("answersHint"),
     answersArea: document.getElementById("answersArea"),
-    rawScore: document.getElementById("rawScore"),
+    rawScore: document.getElementById("raw-score"),
     interpretation: document.getElementById("interpretation"),
     exportPdfBtn: document.getElementById("exportPdfBtn"),
     shareBtn: document.getElementById("shareBtn"),
@@ -36,6 +39,114 @@
     dom.toast.textContent = message;
     // Let screen readers announce changes.
     dom.toast.setAttribute("data-toast-updated", String(Date.now()));
+  }
+
+  function getTotalMonths(years, months) {
+    return years * 12 + months;
+  }
+
+  function getAgeGroup(totalMonths) {
+    return ageRanges.find((range) => totalMonths >= range.min && totalMonths <= range.max);
+  }
+
+  function clampAgeYears(n) {
+    if (!Number.isFinite(n)) return AGE_YEAR_MIN;
+    let v = Math.round(n);
+    if (v < AGE_YEAR_MIN) v = AGE_YEAR_MIN;
+    if (v > AGE_YEAR_MAX) v = AGE_YEAR_MAX;
+    return v;
+  }
+
+  function clampAgeMonths(n) {
+    if (!Number.isFinite(n)) return 0;
+    let v = Math.round(n);
+    if (v < 0) v = 0;
+    if (v > 11) v = 11;
+    return v;
+  }
+
+  function updateAgeUI() {
+    dom.ageGroupLine.textContent = "";
+    dom.ageWarnLine.hidden = true;
+    dom.ageWarnLine.textContent = "";
+    dom.ageYears.classList.remove("is-invalid");
+    dom.ageMonths.classList.remove("is-invalid");
+
+    const yVal = dom.ageYears.value;
+    const mVal = dom.ageMonths.value;
+
+    if (yVal === "") {
+      if (mVal !== "") {
+        dom.ageWarnLine.hidden = false;
+        dom.ageWarnLine.textContent = "Introduceți și numărul de ani.";
+        dom.ageMonths.classList.add("is-invalid");
+      }
+      return;
+    }
+
+    const years = clampAgeYears(Number(yVal));
+    const months = mVal === "" ? 0 : clampAgeMonths(Number(mVal));
+    if (mVal !== "") dom.ageMonths.value = String(months);
+
+    const total = getTotalMonths(years, months);
+    const group = getAgeGroup(total);
+    if (group) {
+      dom.ageGroupLine.textContent = `Grupă de vârstă: ${group.label}`;
+    } else {
+      dom.ageWarnLine.hidden = false;
+      dom.ageWarnLine.textContent = "Vârsta nu se încadrează în intervalul normelor disponibile.";
+    }
+  }
+
+  function onAgeYearsInput() {
+    const raw = dom.ageYears.value;
+    if (raw === "") {
+      updateAgeUI();
+      updateResults();
+      return;
+    }
+    const n = Number(raw);
+    if (!Number.isFinite(n)) {
+      dom.ageYears.value = "";
+      updateAgeUI();
+      updateResults();
+      return;
+    }
+    const clamped = clampAgeYears(n);
+    dom.ageYears.value = String(clamped);
+    dom.ageYears.classList.toggle("is-invalid", n !== clamped);
+    updateAgeUI();
+    updateResults();
+  }
+
+  function onAgeMonthsInput() {
+    const raw = dom.ageMonths.value;
+    if (raw === "") {
+      updateAgeUI();
+      updateResults();
+      return;
+    }
+    const n = Number(raw);
+    if (!Number.isFinite(n)) {
+      dom.ageMonths.value = "";
+      updateAgeUI();
+      updateResults();
+      return;
+    }
+    const clamped = clampAgeMonths(n);
+    dom.ageMonths.value = String(clamped);
+    dom.ageMonths.classList.toggle("is-invalid", n !== clamped);
+    updateAgeUI();
+    updateResults();
+  }
+
+  function formatAgeForExport() {
+    const yVal = dom.ageYears.value;
+    if (yVal === "") return "(not provided)";
+    const years = clampAgeYears(Number(yVal));
+    const mVal = dom.ageMonths.value;
+    const months = mVal === "" ? 0 : clampAgeMonths(Number(mVal));
+    return `${years} ani ${months} luni`;
   }
 
   function setActiveButton(groupEl, datasetKey, value) {
@@ -83,17 +194,125 @@
     return state.answers.length > 0 && state.answers.every((v) => v !== "" && v !== null && v !== undefined);
   }
 
-  function renderScorePlaceholder() {
-    if (!allFilled()) {
-      dom.rawScore.textContent = "—";
-      dom.interpretation.textContent = "Awaiting scoring logic…";
-      return;
+  function calculateRawScore(userAnswers, correctAnswers) {
+    let score = 0;
+    for (let i = 0; i < correctAnswers.length; i++) {
+      if (Number(userAnswers[i]) === correctAnswers[i]) {
+        score++;
+      }
     }
+    return score;
+  }
 
-    // Scoring logic intentionally not implemented yet.
-    dom.rawScore.textContent = "Pending…";
-    dom.interpretation.textContent =
-      "Answers are ready. Scoring and interpretation will be added later.";
+  function getUserTotalMonthsOrNull() {
+    const yVal = dom.ageYears.value;
+    if (yVal === "") return null;
+    const years = clampAgeYears(Number(yVal));
+    const mVal = dom.ageMonths.value;
+    const months = mVal === "" ? 0 : clampAgeMonths(Number(mVal));
+    return getTotalMonths(years, months);
+  }
+
+  function formatPercentileForDisplay(p) {
+    const s = String(p).trim();
+    if (!s) return "";
+    return s.includes("%") ? s : `${s}%`;
+  }
+
+  function updateResults() {
+    const dash = "-";
+    let rawScore = null;
+    let spmPlus = null;
+    let ageIndex = null;
+    let result = null;
+
+    try {
+      if (!allFilled()) {
+        dom.rawScore.textContent = dash;
+        dom.interpretation.textContent = dash;
+        console.log({ rawScore, spmPlus, ageIndex, result });
+        return;
+      }
+
+      if (state.testType !== "standard") {
+        dom.rawScore.textContent = dash;
+        dom.interpretation.textContent = dash;
+        console.log({ rawScore, spmPlus, ageIndex, result });
+        return;
+      }
+
+      if (!STANDARD_CORRECT_FLAT || STANDARD_CORRECT_FLAT.length !== state.answers.length) {
+        dom.rawScore.textContent = dash;
+        dom.interpretation.textContent = dash;
+        console.log({ rawScore, spmPlus, ageIndex, result });
+        return;
+      }
+
+      rawScore = calculateRawScore(state.answers, STANDARD_CORRECT_FLAT);
+      dom.rawScore.textContent = String(rawScore);
+
+      if (typeof window.getSPMPlus !== "function") {
+        dom.interpretation.textContent = dash;
+        spmPlus = null;
+        ageIndex = null;
+        result = null;
+        console.log({ rawScore, spmPlus, ageIndex, result });
+        return;
+      }
+
+      spmPlus = window.getSPMPlus(rawScore);
+      if (spmPlus === null || spmPlus === undefined) {
+        dom.interpretation.textContent = dash;
+        ageIndex = null;
+        result = null;
+        console.log({ rawScore, spmPlus, ageIndex, result });
+        return;
+      }
+
+      const totalMonths = getUserTotalMonthsOrNull();
+      if (totalMonths === null) {
+        dom.interpretation.textContent = dash;
+        ageIndex = null;
+        result = null;
+        console.log({ rawScore, spmPlus, ageIndex, result });
+        return;
+      }
+
+      const norms = window.RavenNorms;
+      ageIndex =
+        norms && typeof norms.getAgeIndexForTotalMonths === "function"
+          ? norms.getAgeIndexForTotalMonths(totalMonths)
+          : -1;
+
+      if (ageIndex < 0) {
+        dom.interpretation.textContent = dash;
+        result = null;
+        console.log({ rawScore, spmPlus, ageIndex, result });
+        return;
+      }
+
+      if (typeof window.getResult !== "function") {
+        dom.interpretation.textContent = dash;
+        result = null;
+        console.log({ rawScore, spmPlus, ageIndex, result });
+        return;
+      }
+
+      result = window.getResult(spmPlus, ageIndex);
+      if (!result) {
+        dom.interpretation.textContent = dash;
+        console.log({ rawScore, spmPlus, ageIndex, result });
+        return;
+      }
+
+      dom.interpretation.textContent = `Percentilă: ${formatPercentileForDisplay(result.percentile)} | IQ: ${result.iq}`;
+      console.log({ rawScore, spmPlus, ageIndex, result });
+    } catch (e) {
+      console.error("[Raven] updateResults:", e);
+      dom.rawScore.textContent = dash;
+      dom.interpretation.textContent = dash;
+      console.log({ rawScore, spmPlus, ageIndex, result });
+    }
   }
 
   function focusInputAt(index) {
@@ -241,7 +460,7 @@
           }
         }
 
-        renderScorePlaceholder();
+        updateResults();
       });
 
       input.addEventListener("keydown", (e) => {
@@ -267,7 +486,7 @@
           updateIndividualInputUI(i - 1);
           focusInputAt(i - 1);
         }
-        renderScorePlaceholder();
+        updateResults();
       });
 
       box.appendChild(input);
@@ -312,7 +531,7 @@
         if (i < parsed.length) state.answers[i] = parsed[i];
       }
 
-      renderScorePlaceholder();
+      updateResults();
     });
 
     dom.answersArea.appendChild(textarea);
@@ -332,7 +551,7 @@
     }
 
     // Reset result display on mode changes.
-    renderScorePlaceholder();
+    updateResults();
   }
 
   function exportPdf() {
@@ -346,7 +565,7 @@
 
     const payload = {
       clientName: dom.clientName.value.trim() || "(not provided)",
-      age: dom.age.value ? String(dom.age.value) : "(not provided)",
+      age: formatAgeForExport(),
       testType: testLabel,
       rawScore: dom.rawScore.textContent,
       interpretation: dom.interpretation.textContent,
@@ -385,7 +604,7 @@
             <div class="card">
               <div class="kv">
                 <div class="k">Client</div><div class="v">${escapeHtml(payload.clientName)}</div>
-                <div class="k">Age</div><div class="v">${escapeHtml(payload.age)}</div>
+                <div class="k">Vârstă</div><div class="v">${escapeHtml(payload.age)}</div>
                 <div class="k">Test type</div><div class="v">${escapeHtml(payload.testType)}</div>
                 <div class="k">Raw score</div><div class="v">${escapeHtml(payload.rawScore)}</div>
                 <div class="k">Interpretation</div><div class="v">${escapeHtml(payload.interpretation)}</div>
@@ -424,7 +643,7 @@
       `Digital Raven`,
       `Test: ${testLabel}`,
       dom.clientName.value.trim() ? `Client: ${dom.clientName.value.trim()}` : null,
-      dom.age.value ? `Age: ${dom.age.value}` : null,
+      dom.ageYears.value ? `Vârstă: ${formatAgeForExport()}` : null,
       `Raw score: ${dom.rawScore.textContent}`
     ]
       .filter(Boolean)
@@ -481,13 +700,10 @@
     });
 
     dom.clientName.addEventListener("input", () => {
-      // Placeholder: no scoring logic yet.
-      renderScorePlaceholder();
+      updateResults();
     });
-    dom.age.addEventListener("input", () => {
-      // Placeholder: no scoring logic yet.
-      renderScorePlaceholder();
-    });
+    dom.ageYears.addEventListener("input", onAgeYearsInput);
+    dom.ageMonths.addEventListener("input", onAgeMonthsInput);
 
     dom.exportPdfBtn.addEventListener("click", exportPdf);
     dom.shareBtn.addEventListener("click", share);
@@ -518,7 +734,11 @@
     initOfflineIndicator();
     registerServiceWorker();
     setAnswersHint();
+    updateAgeUI();
     syncSelectionsAndRender();
+    void Promise.resolve(window.RavenNorms && window.RavenNorms.ready)
+      .then(() => updateResults())
+      .catch(() => updateResults());
   }
 
   init();

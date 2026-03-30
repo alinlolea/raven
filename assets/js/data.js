@@ -14,3 +14,19 @@ const STANDARD_CORRECT_FLAT = (() => {
   }
   return out;
 })();
+
+/** Normative year bands; min/max are total age in months (inclusive). */
+const AGE_YEAR_MIN = 5;
+const AGE_YEAR_MAX = 80;
+
+const ageRanges = (() => {
+  const rows = [];
+  for (let y = AGE_YEAR_MIN; y <= AGE_YEAR_MAX; y++) {
+    rows.push({
+      min: y * 12,
+      max: y * 12 + 11,
+      label: `${y} ani 0 luni – ${y} ani 11 luni`
+    });
+  }
+  return rows;
+})();

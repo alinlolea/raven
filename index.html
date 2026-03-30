@@ -66,19 +66,45 @@
             />
           </div>
 
-          <div class="field">
-            <label class="label" for="age">Age</label>
-            <input
-              class="input"
-              id="age"
-              type="number"
-              inputmode="numeric"
-              min="6"
-              max="90"
-              step="1"
-              placeholder="6–90"
-            />
-          </div>
+          <fieldset class="field fieldAge">
+            <legend class="label">Vârstă</legend>
+            <div class="ageRow">
+              <div class="agePart">
+                <input
+                  class="input inputAge"
+                  id="ageYears"
+                  name="ageYears"
+                  type="number"
+                  inputmode="numeric"
+                  min="5"
+                  max="80"
+                  step="1"
+                  placeholder="5–80"
+                  aria-label="Ani"
+                  aria-describedby="ageGroupLine ageWarnLine"
+                />
+                <span class="ageSuffix" aria-hidden="true">ani</span>
+              </div>
+              <div class="agePart">
+                <input
+                  class="input inputAge"
+                  id="ageMonths"
+                  name="ageMonths"
+                  type="number"
+                  inputmode="numeric"
+                  min="0"
+                  max="11"
+                  step="1"
+                  placeholder="0–11"
+                  aria-label="Luni"
+                  aria-describedby="ageGroupLine ageWarnLine"
+                />
+                <span class="ageSuffix" aria-hidden="true">luni</span>
+              </div>
+            </div>
+            <p class="ageMeta" id="ageGroupLine" aria-live="polite"></p>
+            <p class="ageMeta ageMeta--warn" id="ageWarnLine" hidden></p>
+          </fieldset>
         </section>
 
         <section class="section">
@@ -99,11 +125,11 @@
           <div class="resultGrid">
             <div class="resultCard">
               <div class="resultLabel">Raw score</div>
-              <div class="resultValue" id="rawScore">—</div>
+              <div class="resultValue" id="raw-score">-</div>
             </div>
             <div class="resultCard">
               <div class="resultLabel">Interpretation</div>
-              <div class="resultText" id="interpretation">Awaiting scoring logic…</div>
+              <div class="resultText" id="interpretation">-</div>
             </div>
           </div>
         </section>
@@ -123,6 +149,7 @@
     </main>
 
     <script src="./assets/js/data.js" defer></script>
+    <script src="./assets/js/ravenNorms.js" defer></script>
     <script src="./assets/js/app.js" defer></script>
   </body>
 </html>

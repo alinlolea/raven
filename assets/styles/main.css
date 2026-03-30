@@ -143,6 +143,20 @@ body{
   margin-bottom: 14px;
 }
 
+fieldset.field{
+  border: none;
+  padding: 0;
+  margin: 0 0 14px;
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+fieldset.field > .label,
+fieldset.field > legend.label{
+  padding: 0;
+}
+
 .label{
   font-size: 13.5px;
   font-weight: 650;
@@ -175,6 +189,71 @@ body{
 }
 .input[type="number"]{
   -moz-appearance: textfield;
+}
+
+.fieldAge .ageRow{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+}
+
+.fieldAge .agePart{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.fieldAge .inputAge{
+  flex: 1 1 5rem;
+  min-width: 4.75rem;
+  max-width: 100%;
+  transition: box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease;
+}
+
+.fieldAge .inputAge.is-invalid{
+  border-color: rgba(160, 110, 90, 0.45);
+  background-color: rgba(200, 140, 110, 0.08);
+}
+
+.fieldAge .ageSuffix{
+  font-size: 14px;
+  font-weight: 600;
+  opacity: 0.78;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ageMeta{
+  margin: 10px 0 0;
+  min-height: 1.25em;
+  font-size: 13px;
+  line-height: 1.45;
+  opacity: 0.88;
+  transition: opacity 180ms ease, color 180ms ease;
+}
+
+.ageMeta:empty{
+  margin-top: 6px;
+  min-height: 0;
+}
+
+.ageMeta--warn{
+  color: rgba(110, 75, 60, 0.92);
+  opacity: 0.9;
+}
+
+@media (max-width: 520px){
+  .fieldAge .ageRow{
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .fieldAge .agePart{
+    flex: 1 1 auto;
+    width: 100%;
+  }
 }
 
 .answersArea{
@@ -361,6 +440,11 @@ body{
   font-size: 22px;
   letter-spacing: -0.02em;
   font-weight: 800;
+}
+
+#raw-score,
+#interpretation{
+  transition: color 180ms ease, opacity 180ms ease;
 }
 
 .resultText{
