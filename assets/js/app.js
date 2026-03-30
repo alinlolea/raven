@@ -38,9 +38,7 @@
     shareBtn: document.getElementById("shareBtn"),
     toast: document.getElementById("toast"),
     offlineStatus: document.getElementById("offlineStatus"),
-    resultSection: document.getElementById("resultSection"),
-    calculateBtn: document.getElementById("calculateBtn"),
-    calculateDebug: document.getElementById("calculate-debug")
+    resultSection: document.getElementById("resultSection")
   };
 
   function showToast(message) {
@@ -368,55 +366,6 @@
       dom.rawScore.textContent = dash;
       dom.interpretation.textContent = dash;
       return { rawScore, spmPlus, ageIndex, result, blockReason };
-    }
-  }
-
-  async function runCalculate() {
-    try {
-      showToast("Calculating…");
-      try {
-        if (window.RavenNorms && window.RavenNorms.ready) {
-          await window.RavenNorms.ready;
-        }
-      } catch {
-        // norms load failed; updateResults still reports status
-      }
-      if (window.RavenNorms && window.RavenNorms._getTables && window.RavenNorms._getTables()) {
-        ravenNormsStatus = "ok";
-      }
-      const out = updateResults();
-      const totalMonths = getUserTotalMonthsOrNull();
-      const filledCells = state.answers.filter((v) => v !== "" && v != null).length;
-      const tables = window.RavenNorms && window.RavenNorms._getTables && window.RavenNorms._getTables();
-      const report = {
-        time: new Date().toISOString(),
-        testType: state.testType,
-        normsCsvStatus: ravenNormsStatus,
-        normsTablesLoaded: !!tables,
-        ageYears: dom.ageYears.value || "(empty)",
-        ageMonths: dom.ageMonths.value || "(empty)",
-        totalMonths,
-        filledAnswerCells: filledCells,
-        rawScore: out && out.rawScore,
-        spmPlus: out && out.spmPlus,
-        ageIndex: out && out.ageIndex,
-        blockReason: out && out.blockReason,
-        result: out && out.result,
-        interpretationUi: dom.interpretation.textContent
-      };
-      console.log("[Calculate] report", report);
-      if (dom.calculateDebug) {
-        dom.calculateDebug.hidden = false;
-        dom.calculateDebug.textContent = JSON.stringify(report, null, 2);
-      }
-      showToast("Calculate finished — see debug panel below.");
-    } catch (err) {
-      console.error("[Calculate] failed:", err);
-      showToast("Calculate error — see console.");
-      if (dom.calculateDebug) {
-        dom.calculateDebug.hidden = false;
-        dom.calculateDebug.textContent = String(err);
-      }
     }
   }
 
@@ -813,12 +762,6 @@
 
     dom.exportPdfBtn.addEventListener("click", exportPdf);
     dom.shareBtn.addEventListener("click", share);
-
-    if (dom.calculateBtn) {
-      dom.calculateBtn.addEventListener("click", () => {
-        void runCalculate();
-      });
-    }
 
     window.addEventListener("ravenNormsLoaded", (ev) => {
       const d = ev && /** @type {CustomEvent} */ (ev).detail;
