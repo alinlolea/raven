@@ -80,7 +80,7 @@
     dom.ageYears.classList.remove("is-invalid");
     dom.ageMonths.classList.remove("is-invalid");
 
-    const yVal = dom.ageYears.value;
+    const yVal = dom.ageYears.value.trim();
     const mVal = dom.ageMonths.value;
 
     if (yVal === "") {
@@ -92,7 +92,14 @@
       return;
     }
 
-    const years = clampAgeYears(Number(yVal));
+    const yearsNum = Number(yVal);
+    if (!Number.isFinite(yearsNum)) return;
+
+    if (yearsNum < AGE_YEAR_MIN || yearsNum > AGE_YEAR_MAX) {
+      return;
+    }
+
+    const years = yearsNum;
     const months = mVal === "" ? 0 : clampAgeMonths(Number(mVal));
     if (mVal !== "") dom.ageMonths.value = String(months);
 
@@ -113,16 +120,29 @@
       updateResults();
       return;
     }
-    const n = Number(raw);
-    if (!Number.isFinite(n)) {
-      dom.ageYears.value = "";
+    const cleaned = raw.replace(/\D/g, "");
+    if (cleaned !== raw) {
+      dom.ageYears.value = cleaned;
+    }
+    updateAgeUI();
+    updateResults();
+  }
+
+  function onAgeYearsBlur() {
+    const raw = dom.ageYears.value.trim();
+    if (raw === "") {
       updateAgeUI();
       updateResults();
       return;
     }
-    const clamped = clampAgeYears(n);
-    dom.ageYears.value = String(clamped);
-    dom.ageYears.classList.toggle("is-invalid", n !== clamped);
+    const n = Number(raw);
+    if (!Number.isFinite(n)) {
+      dom.ageYears.value = "";
+    } else {
+      const c = clampAgeYears(n);
+      dom.ageYears.value = String(c);
+      dom.ageYears.classList.toggle("is-invalid", n !== c);
+    }
     updateAgeUI();
     updateResults();
   }
@@ -134,22 +154,35 @@
       updateResults();
       return;
     }
-    const n = Number(raw);
-    if (!Number.isFinite(n)) {
-      dom.ageMonths.value = "";
+    const cleaned = raw.replace(/\D/g, "");
+    if (cleaned !== raw) {
+      dom.ageMonths.value = cleaned;
+    }
+    updateAgeUI();
+    updateResults();
+  }
+
+  function onAgeMonthsBlur() {
+    const raw = dom.ageMonths.value;
+    if (raw === "") {
       updateAgeUI();
       updateResults();
       return;
     }
-    const clamped = clampAgeMonths(n);
-    dom.ageMonths.value = String(clamped);
-    dom.ageMonths.classList.toggle("is-invalid", n !== clamped);
+    const n = Number(raw);
+    if (!Number.isFinite(n)) {
+      dom.ageMonths.value = "";
+    } else {
+      const c = clampAgeMonths(n);
+      dom.ageMonths.value = String(c);
+      dom.ageMonths.classList.toggle("is-invalid", n !== c);
+    }
     updateAgeUI();
     updateResults();
   }
 
   function formatAgeForExport() {
-    const yVal = dom.ageYears.value;
+    const yVal = dom.ageYears.value.trim();
     if (yVal === "") return "(not provided)";
     const years = clampAgeYears(Number(yVal));
     const mVal = dom.ageMonths.value;
@@ -220,9 +253,12 @@
   }
 
   function getUserTotalMonthsOrNull() {
-    const yVal = dom.ageYears.value;
+    const yVal = dom.ageYears.value.trim();
     if (yVal === "") return null;
-    const years = clampAgeYears(Number(yVal));
+    const n = Number(yVal);
+    if (!Number.isFinite(n)) return null;
+    if (n < AGE_YEAR_MIN || n > AGE_YEAR_MAX) return null;
+    const years = n;
     const mVal = dom.ageMonths.value;
     const months = mVal === "" ? 0 : clampAgeMonths(Number(mVal));
     return getTotalMonths(years, months);
@@ -245,7 +281,6 @@
         blockReason = "not_standard_test";
         dom.rawScore.textContent = dash;
         dom.interpretation.textContent = dash;
-        console.log({ rawScore, spmPlus, ageIndex, result, blockReason });
         return { rawScore, spmPlus, ageIndex, result, blockReason };
       }
 
@@ -253,23 +288,21 @@
         blockReason = "no_answer_data";
         dom.rawScore.textContent = dash;
         dom.interpretation.textContent = dash;
-        console.log({ rawScore, spmPlus, ageIndex, result, blockReason });
         return { rawScore, spmPlus, ageIndex, result, blockReason };
       }
 
       rawScore = calculateRawScore(state.answers, STANDARD_CORRECT_FLAT);
       dom.rawScore.textContent = String(rawScore);
 
-      const hasAge = dom.ageYears.value.trim() !== "";
-      const readyForNorms = hasAge && rawScore >= 1;
+      const totalMonths = getUserTotalMonthsOrNull();
+      const readyForNorms = totalMonths !== null && rawScore >= 1;
 
       if (!readyForNorms) {
-        blockReason = !hasAge ? "need_age_years" : "need_at_least_one_correct";
+        blockReason = rawScore < 1 ? "need_at_least_one_correct" : "need_valid_age_5_80_or_months";
         dom.interpretation.textContent = dash;
         spmPlus = null;
         ageIndex = null;
         result = null;
-        console.log({ rawScore, spmPlus, ageIndex, result, blockReason });
         return { rawScore, spmPlus, ageIndex, result, blockReason };
       }
 
@@ -279,7 +312,6 @@
         spmPlus = null;
         ageIndex = null;
         result = null;
-        console.log({ rawScore, spmPlus, ageIndex, result, blockReason });
         return { rawScore, spmPlus, ageIndex, result, blockReason };
       }
 
@@ -297,17 +329,6 @@
         }
         ageIndex = null;
         result = null;
-        console.log({ rawScore, spmPlus, ageIndex, result, ravenNormsStatus, blockReason });
-        return { rawScore, spmPlus, ageIndex, result, blockReason };
-      }
-
-      const totalMonths = getUserTotalMonthsOrNull();
-      if (totalMonths === null) {
-        blockReason = "total_months_null";
-        dom.interpretation.textContent = dash;
-        ageIndex = null;
-        result = null;
-        console.log({ rawScore, spmPlus, ageIndex, result, blockReason });
         return { rawScore, spmPlus, ageIndex, result, blockReason };
       }
 
@@ -321,7 +342,6 @@
         blockReason = "age_outside_csv_bands";
         dom.interpretation.textContent = "Vârsta nu se încadrează în normele CSV.";
         result = null;
-        console.log({ rawScore, spmPlus, ageIndex, result, blockReason });
         return { rawScore, spmPlus, ageIndex, result, blockReason };
       }
 
@@ -329,7 +349,6 @@
         blockReason = "getResult_missing";
         dom.interpretation.textContent = dash;
         result = null;
-        console.log({ rawScore, spmPlus, ageIndex, result, blockReason });
         return { rawScore, spmPlus, ageIndex, result, blockReason };
       }
 
@@ -337,62 +356,68 @@
       if (!result) {
         blockReason = "getResult_null";
         dom.interpretation.textContent = dash;
-        console.log({ rawScore, spmPlus, ageIndex, result, blockReason });
         return { rawScore, spmPlus, ageIndex, result, blockReason };
       }
 
       blockReason = null;
       dom.interpretation.textContent = `Percentilă: ${result.percentile} | IQ: ${result.iq}`;
-      console.log({ rawScore, spmPlus, ageIndex, result });
       return { rawScore, spmPlus, ageIndex, result, blockReason };
     } catch (e) {
       console.error("[Raven] updateResults:", e);
       blockReason = "exception";
       dom.rawScore.textContent = dash;
       dom.interpretation.textContent = dash;
-      console.log({ rawScore, spmPlus, ageIndex, result, blockReason, error: String(e) });
       return { rawScore, spmPlus, ageIndex, result, blockReason };
     }
   }
 
   async function runCalculate() {
-    showToast("Calculating…");
     try {
-      if (window.RavenNorms && window.RavenNorms.ready) {
-        await window.RavenNorms.ready;
+      showToast("Calculating…");
+      try {
+        if (window.RavenNorms && window.RavenNorms.ready) {
+          await window.RavenNorms.ready;
+        }
+      } catch {
+        // norms load failed; updateResults still reports status
       }
-    } catch {
-      // norms load failed; updateResults still reports status
+      if (window.RavenNorms && window.RavenNorms._getTables && window.RavenNorms._getTables()) {
+        ravenNormsStatus = "ok";
+      }
+      const out = updateResults();
+      const totalMonths = getUserTotalMonthsOrNull();
+      const filledCells = state.answers.filter((v) => v !== "" && v != null).length;
+      const tables = window.RavenNorms && window.RavenNorms._getTables && window.RavenNorms._getTables();
+      const report = {
+        time: new Date().toISOString(),
+        testType: state.testType,
+        normsCsvStatus: ravenNormsStatus,
+        normsTablesLoaded: !!tables,
+        ageYears: dom.ageYears.value || "(empty)",
+        ageMonths: dom.ageMonths.value || "(empty)",
+        totalMonths,
+        filledAnswerCells: filledCells,
+        rawScore: out && out.rawScore,
+        spmPlus: out && out.spmPlus,
+        ageIndex: out && out.ageIndex,
+        blockReason: out && out.blockReason,
+        result: out && out.result,
+        interpretationUi: dom.interpretation.textContent
+      };
+      console.log("[Calculate] report", report);
+      if (dom.calculateDebug) {
+        dom.calculateDebug.hidden = false;
+        dom.calculateDebug.textContent = JSON.stringify(report, null, 2);
+      }
+      showToast("Calculate finished — see debug panel below.");
+    } catch (err) {
+      console.error("[Calculate] failed:", err);
+      showToast("Calculate error — see console.");
+      if (dom.calculateDebug) {
+        dom.calculateDebug.hidden = false;
+        dom.calculateDebug.textContent = String(err);
+      }
     }
-    if (window.RavenNorms && window.RavenNorms._getTables && window.RavenNorms._getTables()) {
-      ravenNormsStatus = "ok";
-    }
-    const out = updateResults();
-    const totalMonths = getUserTotalMonthsOrNull();
-    const filledCells = state.answers.filter((v) => v !== "" && v != null).length;
-    const tables = window.RavenNorms && window.RavenNorms._getTables && window.RavenNorms._getTables();
-    const report = {
-      time: new Date().toISOString(),
-      testType: state.testType,
-      normsCsvStatus: ravenNormsStatus,
-      normsTablesLoaded: !!tables,
-      ageYears: dom.ageYears.value || "(empty)",
-      ageMonths: dom.ageMonths.value || "(empty)",
-      totalMonths,
-      filledAnswerCells: filledCells,
-      rawScore: out && out.rawScore,
-      spmPlus: out && out.spmPlus,
-      ageIndex: out && out.ageIndex,
-      blockReason: out && out.blockReason,
-      result: out && out.result,
-      interpretationUi: dom.interpretation.textContent
-    };
-    console.log("[Calculate] report", report);
-    if (dom.calculateDebug) {
-      dom.calculateDebug.hidden = false;
-      dom.calculateDebug.textContent = JSON.stringify(report, null, 2);
-    }
-    showToast("Calculate finished — see debug panel below.");
   }
 
   function focusInputAt(index) {
@@ -782,7 +807,9 @@
       updateResults();
     });
     dom.ageYears.addEventListener("input", onAgeYearsInput);
+    dom.ageYears.addEventListener("blur", onAgeYearsBlur);
     dom.ageMonths.addEventListener("input", onAgeMonthsInput);
+    dom.ageMonths.addEventListener("blur", onAgeMonthsBlur);
 
     dom.exportPdfBtn.addEventListener("click", exportPdf);
     dom.shareBtn.addEventListener("click", share);
