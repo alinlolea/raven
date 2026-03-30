@@ -194,12 +194,20 @@
     return state.answers.length > 0 && state.answers.every((v) => v !== "" && v !== null && v !== undefined);
   }
 
-  function calculateRawScore(userAnswers, correctAnswers) {
+  /**
+   * Counts correct answers. userAnswers are in grid DOM order (A1,B1,…,E1,A2,…);
+   * correctAnswersFlat is STANDARD_CORRECT_FLAT (A1–A12, B1–B12, …).
+   */
+  function calculateRawScore(userAnswers, correctAnswersFlat) {
+    const len = Math.min(userAnswers.length, correctAnswersFlat.length);
     let score = 0;
-    for (let i = 0; i < correctAnswers.length; i++) {
-      if (Number(userAnswers[i]) === correctAnswers[i]) {
-        score++;
-      }
+    for (let domIdx = 0; domIdx < len; domIdx++) {
+      const row = Math.floor(domIdx / 5);
+      const col = domIdx % 5;
+      const flatIdx = col * 12 + row;
+      const u = userAnswers[domIdx];
+      if (u === "" || u === null || u === undefined) continue;
+      if (Number(u) === correctAnswersFlat[flatIdx]) score++;
     }
     return score;
   }
@@ -213,12 +221,6 @@
     return getTotalMonths(years, months);
   }
 
-  function formatPercentileForDisplay(p) {
-    const s = String(p).trim();
-    if (!s) return "";
-    return s.includes("%") ? s : `${s}%`;
-  }
-
   function updateResults() {
     const dash = "-";
     let rawScore = null;
@@ -227,13 +229,6 @@
     let result = null;
 
     try {
-      if (!allFilled()) {
-        dom.rawScore.textContent = dash;
-        dom.interpretation.textContent = dash;
-        console.log({ rawScore, spmPlus, ageIndex, result });
-        return;
-      }
-
       if (state.testType !== "standard") {
         dom.rawScore.textContent = dash;
         dom.interpretation.textContent = dash;
@@ -241,7 +236,7 @@
         return;
       }
 
-      if (!STANDARD_CORRECT_FLAT || STANDARD_CORRECT_FLAT.length !== state.answers.length) {
+      if (!STANDARD_CORRECT_FLAT || STANDARD_CORRECT_FLAT.length === 0 || !state.answers.length) {
         dom.rawScore.textContent = dash;
         dom.interpretation.textContent = dash;
         console.log({ rawScore, spmPlus, ageIndex, result });
@@ -250,6 +245,18 @@
 
       rawScore = calculateRawScore(state.answers, STANDARD_CORRECT_FLAT);
       dom.rawScore.textContent = String(rawScore);
+
+      const hasAge = dom.ageYears.value.trim() !== "";
+      const readyForNorms = hasAge && rawScore >= 1;
+
+      if (!readyForNorms) {
+        dom.interpretation.textContent = dash;
+        spmPlus = null;
+        ageIndex = null;
+        result = null;
+        console.log({ rawScore, spmPlus, ageIndex, result });
+        return;
+      }
 
       if (typeof window.getSPMPlus !== "function") {
         dom.interpretation.textContent = dash;
@@ -305,7 +312,7 @@
         return;
       }
 
-      dom.interpretation.textContent = `Percentilă: ${formatPercentileForDisplay(result.percentile)} | IQ: ${result.iq}`;
+      dom.interpretation.textContent = `Percentilă: ${result.percentile} | IQ: ${result.iq}`;
       console.log({ rawScore, spmPlus, ageIndex, result });
     } catch (e) {
       console.error("[Raven] updateResults:", e);
