@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+
+    <title>Digital Raven</title>
+
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="icon" href="./assets/icons/icon-192.png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="./assets/icons/icon-192.png" />
+
+    <meta name="theme-color" content="#4F6F5F" />
+    <meta name="description" content="Digital Raven psychological test scoring (PWA)." />
+
+    <link rel="stylesheet" href="./assets/styles/main.css" />
+  </head>
+  <body>
+    <main class="page">
+      <div class="card" id="mainContainer">
+        <header class="brand">
+          <img class="logo" src="./assets/images/logo.png" alt="Digital Raven logo" width="88" height="88" />
+          <div class="brandText">
+            <h1 class="title">Digital Raven</h1>
+            <p class="subtitle">Psychological test scoring</p>
+          </div>
+        </header>
+
+        <section class="section">
+          <div class="sectionHeader">
+            <div class="sectionTitle">Test type</div>
+            <div class="sectionHint">Select the questionnaire version.</div>
+          </div>
+          <div class="segmented" role="radiogroup" aria-label="Test type selection" id="testTypeGroup">
+            <button type="button" class="segBtn" data-test-type="color" aria-pressed="false">Color</button>
+            <button type="button" class="segBtn is-active" data-test-type="standard" aria-pressed="true">
+              Standard
+            </button>
+            <button type="button" class="segBtn" data-test-type="plus" aria-pressed="false">Plus</button>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="sectionHeader">
+            <div class="sectionTitle">Input mode</div>
+            <div class="sectionHint">Choose how you enter answers.</div>
+          </div>
+          <div class="segmented" role="radiogroup" aria-label="Input mode selection" id="inputModeGroup">
+            <button type="button" class="segBtn is-active" data-input-mode="individual" aria-pressed="true">
+              Individual
+            </button>
+            <button type="button" class="segBtn" data-input-mode="bulk" aria-pressed="false">Bulk</button>
+          </div>
+        </section>
+
+        <section class="section formSection">
+          <div class="field">
+            <label class="label" for="clientName">Client name</label>
+            <input
+              class="input"
+              id="clientName"
+              type="text"
+              autocomplete="off"
+              placeholder="e.g. Maria Popescu"
+            />
+          </div>
+
+          <div class="field">
+            <label class="label" for="age">Age</label>
+            <input
+              class="input"
+              id="age"
+              type="number"
+              inputmode="numeric"
+              min="6"
+              max="90"
+              step="1"
+              placeholder="6–90"
+            />
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="sectionHeader">
+            <div class="sectionTitle">Answers</div>
+            <div class="sectionHint" id="answersHint">Enter values from 1 to 6.</div>
+          </div>
+
+          <div id="answersArea" class="answersArea" aria-live="polite"></div>
+        </section>
+
+        <section class="section resultsSection" id="resultSection">
+          <div class="sectionHeader">
+            <div class="sectionTitle">Result</div>
+            <div class="sectionHint">Updates automatically as answers are filled.</div>
+          </div>
+
+          <div class="resultGrid">
+            <div class="resultCard">
+              <div class="resultLabel">Raw score</div>
+              <div class="resultValue" id="rawScore">—</div>
+            </div>
+            <div class="resultCard">
+              <div class="resultLabel">Interpretation</div>
+              <div class="resultText" id="interpretation">Awaiting scoring logic…</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section actionsSection">
+          <div class="actionsRow">
+            <button type="button" class="btn btnPrimary" id="exportPdfBtn">Export PDF</button>
+            <button type="button" class="btn btnSecondary" id="shareBtn">Share</button>
+          </div>
+          <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+        </section>
+
+        <footer class="footer">
+          <span id="offlineStatus" class="statusPill">Checking offline…</span>
+        </footer>
+      </div>
+    </main>
+
+    <script src="./assets/js/app.js" defer></script>
+  </body>
+</html>
+
