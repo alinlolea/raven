@@ -38,7 +38,9 @@
     shareBtn: document.getElementById("shareBtn"),
     toast: document.getElementById("toast"),
     offlineStatus: document.getElementById("offlineStatus"),
-    resultSection: document.getElementById("resultSection")
+    resultSection: document.getElementById("resultSection"),
+    calculateBtn: document.getElementById("calculateBtn"),
+    calculateDebug: document.getElementById("calculate-debug")
   };
 
   function showToast(message) {
@@ -226,26 +228,33 @@
     return getTotalMonths(years, months);
   }
 
+  /**
+   * @returns {{ rawScore: number|null, spmPlus: *, ageIndex: number|null, result: *, blockReason: string|null }}
+   */
   function updateResults() {
     const dash = "-";
     let rawScore = null;
     let spmPlus = null;
     let ageIndex = null;
     let result = null;
+    /** @type {string | null} */
+    let blockReason = null;
 
     try {
       if (state.testType !== "standard") {
+        blockReason = "not_standard_test";
         dom.rawScore.textContent = dash;
         dom.interpretation.textContent = dash;
-        console.log({ rawScore, spmPlus, ageIndex, result });
-        return;
+        console.log({ rawScore, spmPlus, ageIndex, result, blockReason });
+        return { rawScore, spmPlus, ageIndex, result, blockReason };
       }
 
       if (!STANDARD_CORRECT_FLAT || STANDARD_CORRECT_FLAT.length === 0 || !state.answers.length) {
+        blockReason = "no_answer_data";
         dom.rawScore.textContent = dash;
         dom.interpretation.textContent = dash;
-        console.log({ rawScore, spmPlus, ageIndex, result });
-        return;
+        console.log({ rawScore, spmPlus, ageIndex, result, blockReason });
+        return { rawScore, spmPlus, ageIndex, result, blockReason };
       }
 
       rawScore = calculateRawScore(state.answers, STANDARD_CORRECT_FLAT);
@@ -255,45 +264,51 @@
       const readyForNorms = hasAge && rawScore >= 1;
 
       if (!readyForNorms) {
+        blockReason = !hasAge ? "need_age_years" : "need_at_least_one_correct";
         dom.interpretation.textContent = dash;
         spmPlus = null;
         ageIndex = null;
         result = null;
-        console.log({ rawScore, spmPlus, ageIndex, result });
-        return;
+        console.log({ rawScore, spmPlus, ageIndex, result, blockReason });
+        return { rawScore, spmPlus, ageIndex, result, blockReason };
       }
 
       if (typeof window.getSPMPlus !== "function") {
+        blockReason = "getSPMPlus_missing";
         dom.interpretation.textContent = dash;
         spmPlus = null;
         ageIndex = null;
         result = null;
-        console.log({ rawScore, spmPlus, ageIndex, result });
-        return;
+        console.log({ rawScore, spmPlus, ageIndex, result, blockReason });
+        return { rawScore, spmPlus, ageIndex, result, blockReason };
       }
 
       spmPlus = window.getSPMPlus(rawScore);
       if (spmPlus === null || spmPlus === undefined) {
         if (ravenNormsStatus === "pending") {
+          blockReason = "norms_pending_or_raw_out_of_table";
           dom.interpretation.textContent = "Se încarcă normele…";
         } else if (ravenNormsStatus === "failed") {
+          blockReason = "norms_csv_failed";
           dom.interpretation.textContent = "Norme indisponibile (CSV).";
         } else {
+          blockReason = "getSPMPlus_null";
           dom.interpretation.textContent = dash;
         }
         ageIndex = null;
         result = null;
-        console.log({ rawScore, spmPlus, ageIndex, result, ravenNormsStatus });
-        return;
+        console.log({ rawScore, spmPlus, ageIndex, result, ravenNormsStatus, blockReason });
+        return { rawScore, spmPlus, ageIndex, result, blockReason };
       }
 
       const totalMonths = getUserTotalMonthsOrNull();
       if (totalMonths === null) {
+        blockReason = "total_months_null";
         dom.interpretation.textContent = dash;
         ageIndex = null;
         result = null;
-        console.log({ rawScore, spmPlus, ageIndex, result });
-        return;
+        console.log({ rawScore, spmPlus, ageIndex, result, blockReason });
+        return { rawScore, spmPlus, ageIndex, result, blockReason };
       }
 
       const norms = window.RavenNorms;
@@ -303,34 +318,81 @@
           : -1;
 
       if (ageIndex < 0) {
-        dom.interpretation.textContent = dash;
+        blockReason = "age_outside_csv_bands";
+        dom.interpretation.textContent = "Vârsta nu se încadrează în normele CSV.";
         result = null;
-        console.log({ rawScore, spmPlus, ageIndex, result });
-        return;
+        console.log({ rawScore, spmPlus, ageIndex, result, blockReason });
+        return { rawScore, spmPlus, ageIndex, result, blockReason };
       }
 
       if (typeof window.getResult !== "function") {
+        blockReason = "getResult_missing";
         dom.interpretation.textContent = dash;
         result = null;
-        console.log({ rawScore, spmPlus, ageIndex, result });
-        return;
+        console.log({ rawScore, spmPlus, ageIndex, result, blockReason });
+        return { rawScore, spmPlus, ageIndex, result, blockReason };
       }
 
       result = window.getResult(spmPlus, ageIndex);
       if (!result) {
+        blockReason = "getResult_null";
         dom.interpretation.textContent = dash;
-        console.log({ rawScore, spmPlus, ageIndex, result });
-        return;
+        console.log({ rawScore, spmPlus, ageIndex, result, blockReason });
+        return { rawScore, spmPlus, ageIndex, result, blockReason };
       }
 
+      blockReason = null;
       dom.interpretation.textContent = `Percentilă: ${result.percentile} | IQ: ${result.iq}`;
       console.log({ rawScore, spmPlus, ageIndex, result });
+      return { rawScore, spmPlus, ageIndex, result, blockReason };
     } catch (e) {
       console.error("[Raven] updateResults:", e);
+      blockReason = "exception";
       dom.rawScore.textContent = dash;
       dom.interpretation.textContent = dash;
-      console.log({ rawScore, spmPlus, ageIndex, result });
+      console.log({ rawScore, spmPlus, ageIndex, result, blockReason, error: String(e) });
+      return { rawScore, spmPlus, ageIndex, result, blockReason };
     }
+  }
+
+  async function runCalculate() {
+    showToast("Calculating…");
+    try {
+      if (window.RavenNorms && window.RavenNorms.ready) {
+        await window.RavenNorms.ready;
+      }
+    } catch {
+      // norms load failed; updateResults still reports status
+    }
+    if (window.RavenNorms && window.RavenNorms._getTables && window.RavenNorms._getTables()) {
+      ravenNormsStatus = "ok";
+    }
+    const out = updateResults();
+    const totalMonths = getUserTotalMonthsOrNull();
+    const filledCells = state.answers.filter((v) => v !== "" && v != null).length;
+    const tables = window.RavenNorms && window.RavenNorms._getTables && window.RavenNorms._getTables();
+    const report = {
+      time: new Date().toISOString(),
+      testType: state.testType,
+      normsCsvStatus: ravenNormsStatus,
+      normsTablesLoaded: !!tables,
+      ageYears: dom.ageYears.value || "(empty)",
+      ageMonths: dom.ageMonths.value || "(empty)",
+      totalMonths,
+      filledAnswerCells: filledCells,
+      rawScore: out && out.rawScore,
+      spmPlus: out && out.spmPlus,
+      ageIndex: out && out.ageIndex,
+      blockReason: out && out.blockReason,
+      result: out && out.result,
+      interpretationUi: dom.interpretation.textContent
+    };
+    console.log("[Calculate] report", report);
+    if (dom.calculateDebug) {
+      dom.calculateDebug.hidden = false;
+      dom.calculateDebug.textContent = JSON.stringify(report, null, 2);
+    }
+    showToast("Calculate finished — see debug panel below.");
   }
 
   function focusInputAt(index) {
@@ -724,6 +786,12 @@
 
     dom.exportPdfBtn.addEventListener("click", exportPdf);
     dom.shareBtn.addEventListener("click", share);
+
+    if (dom.calculateBtn) {
+      dom.calculateBtn.addEventListener("click", () => {
+        void runCalculate();
+      });
+    }
 
     window.addEventListener("ravenNormsLoaded", (ev) => {
       const d = ev && /** @type {CustomEvent} */ (ev).detail;
