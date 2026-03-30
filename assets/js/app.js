@@ -108,11 +108,29 @@
     }
   }
 
+  function getStandardExpectedAnswer(domIndex) {
+    const row = Math.floor(domIndex / 5);
+    const col = domIndex % 5;
+    return STANDARD_CORRECT_FLAT[col * 12 + row];
+  }
+
+  function updateAnswerValidation(index) {
+    const box = state.answerBoxes[index];
+    if (!box) return;
+    box.classList.remove("correct", "incorrect");
+    if (state.testType !== "standard" || state.answers[index] === "") return;
+    const expected = getStandardExpectedAnswer(index);
+    const v = state.answers[index];
+    if (v === expected) box.classList.add("correct");
+    else box.classList.add("incorrect");
+  }
+
   function updateIndividualInputUI(index) {
     const box = state.answerBoxes[index];
     if (!box) return;
     const filled = state.answers[index] !== "";
     box.classList.toggle("is-filled", filled);
+    updateAnswerValidation(index);
   }
 
   function clampAnswerValue(raw) {
@@ -239,16 +257,14 @@
 
           state.answers[prevIdx] = "";
           const prev = state.answerInputs[prevIdx];
-          const prevBox = state.answerBoxes[prevIdx];
           if (prev) prev.value = "";
-          if (prevBox) prevBox.classList.remove("is-filled");
+          updateIndividualInputUI(prevIdx);
           focusInputAt(prevIdx);
         } else {
           state.answers[i - 1] = "";
           const prev = state.answerInputs[i - 1];
-          const prevBox = state.answerBoxes[i - 1];
           if (prev) prev.value = "";
-          if (prevBox) prevBox.classList.remove("is-filled");
+          updateIndividualInputUI(i - 1);
           focusInputAt(i - 1);
         }
         renderScorePlaceholder();

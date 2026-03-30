@@ -1,5 +1,5 @@
 /* Digital Raven PWA service worker (simple offline-first caching). */
-const CACHE_NAME = "digital-raven-v1";
+const CACHE_NAME = "digital-raven-v2";
 
 function assetUrl(path) {
   return new URL(path, self.location).toString();
@@ -10,6 +10,7 @@ const CORE_ASSETS = [
   assetUrl("./index.html"),
   assetUrl("./manifest.json"),
   assetUrl("./assets/styles/main.css"),
+  assetUrl("./assets/js/data.js"),
   assetUrl("./assets/js/app.js"),
   assetUrl("./assets/images/logo.png"),
   assetUrl("./assets/icons/icon-192.png"),
