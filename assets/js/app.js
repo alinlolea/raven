@@ -68,6 +68,16 @@
       }
       return out;
     }
+    if (testType === "spm-plus") {
+      const cols = ["A", "B", "C", "D", "E"];
+      const out = [];
+      for (const c of cols) {
+        const arr = SPM_PLUS_KEY.answersByCol[c];
+        if (!Array.isArray(arr) || arr.length !== 12) return null;
+        out.push(...arr);
+      }
+      return out;
+    }
     return null;
   }
 
@@ -358,7 +368,7 @@
     let blockReason = null;
 
     try {
-      if (state.testType !== "standard" && state.testType !== "spm-p") {
+      if (state.testType !== "standard" && state.testType !== "spm-p" && state.testType !== "spm-plus") {
         blockReason = "not_supported_test";
         dom.rawScore.textContent = dash;
         dom.interpretation.textContent = dash;
@@ -388,30 +398,36 @@
         return { rawScore, spmPlus, ageIndex, result, blockReason };
       }
 
-      if (typeof window.getSPMPlus !== "function") {
-        blockReason = "getSPMPlus_missing";
-        dom.interpretation.textContent = dash;
-        spmPlus = null;
-        ageIndex = null;
-        result = null;
-        return { rawScore, spmPlus, ageIndex, result, blockReason };
-      }
-
-      spmPlus = window.getSPMPlus(rawScore);
-      if (spmPlus === null || spmPlus === undefined) {
-        if (ravenNormsStatus === "pending") {
-          blockReason = "norms_pending_or_raw_out_of_table";
-          dom.interpretation.textContent = "Se încarcă normele…";
-        } else if (ravenNormsStatus === "failed") {
-          blockReason = "norms_csv_failed";
-          dom.interpretation.textContent = "Norme indisponibile (CSV).";
-        } else {
-          blockReason = "getSPMPlus_null";
+      // For SPM-C / SPM-P: rawScore corresponds to CSV column A, convert to SPM+ (column B) via getSPMPlus().
+      // For SPM+: rawScore is already CSV column B; skip conversion.
+      if (state.testType === "spm-plus") {
+        spmPlus = rawScore;
+      } else {
+        if (typeof window.getSPMPlus !== "function") {
+          blockReason = "getSPMPlus_missing";
           dom.interpretation.textContent = dash;
+          spmPlus = null;
+          ageIndex = null;
+          result = null;
+          return { rawScore, spmPlus, ageIndex, result, blockReason };
         }
-        ageIndex = null;
-        result = null;
-        return { rawScore, spmPlus, ageIndex, result, blockReason };
+
+        spmPlus = window.getSPMPlus(rawScore);
+        if (spmPlus === null || spmPlus === undefined) {
+          if (ravenNormsStatus === "pending") {
+            blockReason = "norms_pending_or_raw_out_of_table";
+            dom.interpretation.textContent = "Se încarcă normele…";
+          } else if (ravenNormsStatus === "failed") {
+            blockReason = "norms_csv_failed";
+            dom.interpretation.textContent = "Norme indisponibile (CSV).";
+          } else {
+            blockReason = "getSPMPlus_null";
+            dom.interpretation.textContent = dash;
+          }
+          ageIndex = null;
+          result = null;
+          return { rawScore, spmPlus, ageIndex, result, blockReason };
+        }
       }
 
       const norms = window.RavenNorms;
