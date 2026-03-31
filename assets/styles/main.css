@@ -192,26 +192,24 @@ fieldset.field > legend.label{
 }
 
 .fieldAge .ageRow{
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: start;
 }
 
 .fieldAge .agePart{
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 0 0 auto;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
   min-width: 0;
 }
 
 .fieldAge .inputAge{
-  flex: 0 0 auto;
-  width: 4ch;
-  padding: 10px 10px;
+  width: 6ch;
+  min-width: 4.8rem;
+  padding: 10px 12px;
   text-align: center;
-  min-width: 0;
   max-width: 100%;
   transition: box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease;
 }
@@ -222,7 +220,7 @@ fieldset.field > legend.label{
 }
 
 .fieldAge .ageSuffix{
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   opacity: 0.78;
   white-space: nowrap;
@@ -250,26 +248,23 @@ fieldset.field > legend.label{
 
 @media (max-width: 520px){
   .fieldAge .ageRow{
-    flex-direction: row;
-    align-items: center;
+    grid-template-columns: 1fr 1fr;
   }
   .fieldAge .agePart{
-    flex: 1 1 auto;
-    width: 100%;
+    width: auto;
   }
 }
 
 @media (max-width: 360px){
   .fieldAge .ageRow{
-    flex-direction: column;
-    align-items: stretch;
+    grid-template-columns: 1fr 1fr;
   }
   .fieldAge .agePart{
-    width: 100%;
-    justify-content: space-between;
+    width: auto;
   }
   .fieldAge .inputAge{
-    width: 4ch;
+    width: 6ch;
+    min-width: 4.5rem;
   }
 }
 
