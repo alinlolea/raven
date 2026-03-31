@@ -12,9 +12,14 @@
   let ravenNormsStatus = "pending";
 
   const TEST_DEFINITIONS = {
-    standard: { label: "Standard", items: 60 },
-    plus: { label: "Plus", items: 30 },
-    color: { label: "Color", items: 24 }
+    // Existing internal type "standard" remains the only one wired to scoring/norms for now.
+    // UI labels/types expanded; non-standard types are UI-only until logic is added.
+    standard: { label: "SPM - C", items: 60, grid: { cols: 5, rows: 12 }, kind: "spm" },
+    "spm-c": { label: "SPM - C", items: 60, grid: { cols: 5, rows: 12 }, kind: "spm" },
+    "spm-p": { label: "SPM - P", items: 60, grid: { cols: 5, rows: 12 }, kind: "spm" },
+    "spm-plus": { label: "SPM +", items: 60, grid: { cols: 5, rows: 12 }, kind: "spm" },
+    "cpm-c": { label: "CPM - C", items: 36, grid: { cols: 3, rows: 12 }, kind: "cpm" },
+    "cpm-p": { label: "CPM - P", items: 36, grid: { cols: 3, rows: 12 }, kind: "cpm" }
   };
 
   const state = {
@@ -202,7 +207,21 @@
   }
 
   function getItemCount() {
-    return TEST_DEFINITIONS[state.testType].items;
+    const def = TEST_DEFINITIONS[state.testType];
+    return def ? def.items : 0;
+  }
+
+  function getGridDef() {
+    const def = TEST_DEFINITIONS[state.testType];
+    return def?.grid || { cols: 2, rows: 0 };
+  }
+
+  function isSpmLike() {
+    return TEST_DEFINITIONS[state.testType]?.kind === "spm";
+  }
+
+  function isCpmLike() {
+    return TEST_DEFINITIONS[state.testType]?.kind === "cpm";
   }
 
   function makeEmptyAnswers() {
@@ -419,42 +438,30 @@
     return n;
   }
 
-  function getStandardLayoutPartsFromIndex(index) {
-    // For Standard: 5 columns (A-E) x 12 rows (1-12).
-    // DOM order is row-major: A1,B1,C1,D1,E1,A2,... (index increases across columns).
-    const cols = 5;
-    const rows = 12;
-    const rowIdx = Math.floor(index / cols); // 0..11
-    const colIdx = index % cols; // 0..4
+  function getGridLayoutPartsFromIndex(index) {
+    // DOM order is row-major: col moves fastest.
+    const { cols, rows } = getGridDef();
+    const rowIdx = Math.floor(index / cols);
+    const colIdx = index % cols;
     return { rowIdx, colIdx, cols, rows };
   }
 
-  function getNextStandardIndex(index) {
-    const { rowIdx, colIdx, cols, rows } = getStandardLayoutPartsFromIndex(index);
+  function getNextColumnMajorIndex(index) {
+    const { rowIdx, colIdx, cols, rows } = getGridLayoutPartsFromIndex(index);
+    if (!rows || !cols) return null;
 
-    // Desired focus order: A1..A12, then B1..B12, etc.
-    // That means: first move down rows within the same column letter.
-    if (rowIdx < rows - 1) {
-      return (rowIdx + 1) * cols + colIdx;
-    }
-    // At the bottom row: move to next column, reset to first row.
-    if (colIdx < cols - 1) {
-      return 0 * cols + (colIdx + 1);
-    }
-    return null; // Last cell
+    // Column-major traversal: A1..A12, then next column, etc.
+    if (rowIdx < rows - 1) return (rowIdx + 1) * cols + colIdx;
+    if (colIdx < cols - 1) return 0 * cols + (colIdx + 1);
+    return null;
   }
 
-  function getPrevStandardIndex(index) {
-    const { rowIdx, colIdx, cols, rows } = getStandardLayoutPartsFromIndex(index);
-
-    // Reverse of getNextStandardIndex.
-    if (rowIdx > 0) {
-      return (rowIdx - 1) * cols + colIdx;
-    }
-    if (colIdx > 0) {
-      return (rows - 1) * cols + (colIdx - 1);
-    }
-    return null; // First cell
+  function getPrevColumnMajorIndex(index) {
+    const { rowIdx, colIdx, cols, rows } = getGridLayoutPartsFromIndex(index);
+    if (!rows || !cols) return null;
+    if (rowIdx > 0) return (rowIdx - 1) * cols + colIdx;
+    if (colIdx > 0) return (rows - 1) * cols + (colIdx - 1);
+    return null;
   }
 
   function renderIndividualAnswers() {
@@ -463,14 +470,15 @@
 
     const grid = document.createElement("div");
     grid.className = "answersGrid";
-    if (state.testType === "standard") grid.classList.add("is-standard");
+    if (isSpmLike()) grid.classList.add("is-standard");
+    if (isCpmLike()) grid.classList.add("is-cpm");
     dom.answersArea.appendChild(grid);
 
     state.answerInputs = [];
     state.answerBoxes = [];
 
     for (let i = 0; i < total; i++) {
-      const standardCellName = getStandardCellName(i);
+      const cellName = getCellNameForIndex(i);
       const cell = document.createElement("div");
       cell.className = "answerCell";
 
@@ -483,12 +491,12 @@
       input.min = String(ANSWER_MIN);
       input.max = String(ANSWER_MAX);
       input.step = "1";
-      input.placeholder = state.testType === "standard" ? standardCellName : "—";
+      input.placeholder = cellName || "—";
       input.className = "answerInput";
-      input.id = state.testType === "standard" ? `answer-${standardCellName}` : `answer-${i}`;
+      input.id = cellName ? `answer-${cellName}` : `answer-${i}`;
       input.setAttribute(
         "aria-label",
-        state.testType === "standard" ? `Answer ${standardCellName} of Standard` : `Answer ${i + 1} of ${total}`
+        cellName ? `Answer ${cellName}` : `Answer ${i + 1} of ${total}`
       );
 
       // Controlled behavior through state.answers
@@ -509,12 +517,8 @@
 
         // Auto-focus next on entry.
         if (state.answers[i] !== "") {
-          if (state.testType === "standard") {
-            const nextIdx = getNextStandardIndex(i);
-            if (nextIdx !== null) focusInputAt(nextIdx);
-          } else if (i < total - 1) {
-            focusInputAt(i + 1);
-          }
+          const nextIdx = getNextColumnMajorIndex(i);
+          if (nextIdx !== null) focusInputAt(nextIdx);
         }
 
         updateResults();
@@ -527,22 +531,14 @@
 
         // Backspace on empty -> go back (and clear previous so the user can re-type).
         e.preventDefault();
-        if (state.testType === "standard") {
-          const prevIdx = getPrevStandardIndex(i);
-          if (prevIdx === null) return;
+        const prevIdx = getPrevColumnMajorIndex(i);
+        if (prevIdx === null) return;
 
-          state.answers[prevIdx] = "";
-          const prev = state.answerInputs[prevIdx];
-          if (prev) prev.value = "";
-          updateIndividualInputUI(prevIdx);
-          focusInputAt(prevIdx);
-        } else {
-          state.answers[i - 1] = "";
-          const prev = state.answerInputs[i - 1];
-          if (prev) prev.value = "";
-          updateIndividualInputUI(i - 1);
-          focusInputAt(i - 1);
-        }
+        state.answers[prevIdx] = "";
+        const prev = state.answerInputs[prevIdx];
+        if (prev) prev.value = "";
+        updateIndividualInputUI(prevIdx);
+        focusInputAt(prevIdx);
         updateResults();
       });
 
@@ -556,18 +552,27 @@
     setTimeout(() => focusInputAt(0), 0);
   }
 
-  function getStandardCellName(index) {
-    // Standard: 60 answers laid out as 12 rows x 5 columns (A-E).
-    // Labels should match the visual grid (row-major DOM order).
-    // Visual order across the top row: A1, B1, C1, D1, E1.
-    const rows = 12;
-    const cols = 5;
-    const letters = ["A", "B", "C", "D", "E"];
+  function getCellNameForIndex(index) {
+    const { cols } = getGridDef();
 
-    const row = Math.floor(index / cols) + 1; // 1..12
-    const col = index % cols; // 0..4
-    const letter = letters[col] || "A";
-    return `${letter}${row}`;
+    if (isSpmLike()) {
+      const letters = ["A", "B", "C", "D", "E"];
+      const row = Math.floor(index / cols) + 1;
+      const col = index % cols;
+      const letter = letters[col] || "A";
+      return `${letter}${row}`;
+    }
+
+    if (isCpmLike()) {
+      // CPM: 3 columns x 12 rows with labels A, AB, B.
+      const letters = ["A", "AB", "B"];
+      const row = Math.floor(index / cols) + 1;
+      const col = index % cols;
+      const letter = letters[col] || "A";
+      return `${letter}${row}`;
+    }
+
+    return null;
   }
 
   function renderBulkAnswers() {

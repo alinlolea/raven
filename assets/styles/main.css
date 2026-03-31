@@ -102,6 +102,16 @@ body{
   gap: 10px;
 }
 
+.segmented--testTypes{
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 720px){
+  .segmented--testTypes{
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
 .segmented[role="radiogroup"][aria-label="Input mode selection"]{
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -282,6 +292,10 @@ fieldset.field > legend.label{
 
 .answersGrid.is-standard{
   --answers-cols: 5;
+}
+
+.answersGrid.is-cpm{
+  --answers-cols: 3;
 }
 
 @media (min-width: 860px){

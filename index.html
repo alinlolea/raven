@@ -32,12 +32,19 @@
             <div class="sectionTitle">Test type</div>
             <div class="sectionHint">Select the questionnaire version.</div>
           </div>
-          <div class="segmented" role="radiogroup" aria-label="Test type selection" id="testTypeGroup">
-            <button type="button" class="segBtn" data-test-type="color" aria-pressed="false">Color</button>
+          <div
+            class="segmented segmented--testTypes"
+            role="radiogroup"
+            aria-label="Test type selection"
+            id="testTypeGroup"
+          >
+            <button type="button" class="segBtn" data-test-type="cpm-c" aria-pressed="false">CPM - C</button>
+            <button type="button" class="segBtn" data-test-type="cpm-p" aria-pressed="false">CPM - P</button>
             <button type="button" class="segBtn is-active" data-test-type="standard" aria-pressed="true">
-              Standard
+              SPM - C
             </button>
-            <button type="button" class="segBtn" data-test-type="plus" aria-pressed="false">Plus</button>
+            <button type="button" class="segBtn" data-test-type="spm-p" aria-pressed="false">SPM - P</button>
+            <button type="button" class="segBtn" data-test-type="spm-plus" aria-pressed="false">SPM +</button>
           </div>
         </section>
 
