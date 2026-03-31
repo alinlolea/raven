@@ -52,6 +52,8 @@
 
   /** @type {"pending"|"ok"|"failed"} */
   let ravenNormsStatus = "pending";
+  /** @type {"pending"|"ok"|"failed"} */
+  let ravenCNormsStatus = "pending";
 
   function getSpmCorrectFlatFor(testType) {
     // Flat arrays are column-major: A1..A12, B1..B12, ... (matches CSV expectations).
@@ -79,6 +81,24 @@
       return out;
     }
     return null;
+  }
+
+  function getCpmCorrectFlatFor(testType) {
+    const cols = ["A", "AB", "B"];
+    const key = testType === "cpm-c" ? CPM_C_KEY : testType === "cpm-p" ? CPM_P_KEY : null;
+    if (!key) return null;
+    const out = [];
+    for (const c of cols) {
+      const arr = key.answersByCol[c];
+      if (!Array.isArray(arr) || arr.length !== 12) return null;
+      out.push(...arr);
+    }
+    return out;
+  }
+
+  function getCorrectFlatFor(testType) {
+    if (testType === "cpm-c" || testType === "cpm-p") return getCpmCorrectFlatFor(testType);
+    return getSpmCorrectFlatFor(testType);
   }
 
   const TEST_DEFINITIONS = {
@@ -331,11 +351,12 @@
    */
   function calculateRawScore(userAnswers, correctAnswersFlat) {
     const len = Math.min(userAnswers.length, correctAnswersFlat.length);
+    const { cols, rows } = getGridDef();
     let score = 0;
     for (let domIdx = 0; domIdx < len; domIdx++) {
-      const row = Math.floor(domIdx / 5);
-      const col = domIdx % 5;
-      const flatIdx = col * 12 + row;
+      const row = Math.floor(domIdx / cols);
+      const col = domIdx % cols;
+      const flatIdx = col * rows + row;
       const u = userAnswers[domIdx];
       if (u === "" || u === null || u === undefined) continue;
       if (Number(u) === correctAnswersFlat[flatIdx]) score++;
@@ -368,14 +389,17 @@
     let blockReason = null;
 
     try {
-      if (state.testType !== "standard" && state.testType !== "spm-p" && state.testType !== "spm-plus") {
+      const isSpmBacked = state.testType === "standard" || state.testType === "spm-p" || state.testType === "spm-plus";
+      const isCpmBacked = state.testType === "cpm-c" || state.testType === "cpm-p";
+
+      if (!isSpmBacked && !isCpmBacked) {
         blockReason = "not_supported_test";
         dom.rawScore.textContent = dash;
         dom.interpretation.textContent = dash;
         return { rawScore, spmPlus, ageIndex, result, blockReason };
       }
 
-      const correctFlat = getSpmCorrectFlatFor(state.testType);
+      const correctFlat = getCorrectFlatFor(state.testType);
       if (!correctFlat || correctFlat.length === 0 || !state.answers.length) {
         blockReason = "no_answer_data";
         dom.rawScore.textContent = dash;
@@ -395,6 +419,40 @@
         spmPlus = null;
         ageIndex = null;
         result = null;
+        return { rawScore, spmPlus, ageIndex, result, blockReason };
+      }
+
+      if (isCpmBacked) {
+        if (!window.RavenCNorms || typeof window.RavenCNorms.getAgeIndexForTotalMonths !== "function") {
+          blockReason = ravenCNormsStatus === "pending" ? "cpm_norms_pending" : "cpm_norms_missing";
+          dom.interpretation.textContent = ravenCNormsStatus === "pending" ? "Se încarcă normele…" : dash;
+          return { rawScore, spmPlus, ageIndex, result, blockReason };
+        }
+
+        ageIndex = window.RavenCNorms.getAgeIndexForTotalMonths(totalMonths);
+        if (ageIndex < 0) {
+          blockReason = "age_outside_csv_bands";
+          dom.interpretation.textContent = "Vârsta nu se încadrează în normele CSV.";
+          result = null;
+          return { rawScore, spmPlus, ageIndex, result, blockReason };
+        }
+
+        if (typeof window.RavenCNorms.getResult !== "function") {
+          blockReason = "cpm_getResult_missing";
+          dom.interpretation.textContent = dash;
+          result = null;
+          return { rawScore, spmPlus, ageIndex, result, blockReason };
+        }
+
+        result = window.RavenCNorms.getResult(rawScore, ageIndex);
+        if (!result) {
+          dom.interpretation.textContent = ravenCNormsStatus === "pending" ? "Se încarcă normele…" : dash;
+          blockReason = "cpm_getResult_null";
+          return { rawScore, spmPlus, ageIndex, result, blockReason };
+        }
+
+        blockReason = null;
+        dom.interpretation.textContent = `Percentilă: ${result.percentile} | IQ: ${result.iq}`;
         return { rawScore, spmPlus, ageIndex, result, blockReason };
       }
 
@@ -882,6 +940,13 @@
       const d = ev && /** @type {CustomEvent} */ (ev).detail;
       if (d && d.ok) ravenNormsStatus = "ok";
       else ravenNormsStatus = "failed";
+      updateResults();
+    });
+
+    window.addEventListener("ravenCNormsLoaded", (ev) => {
+      const d = ev && /** @type {CustomEvent} */ (ev).detail;
+      if (d && d.ok) ravenCNormsStatus = "ok";
+      else ravenCNormsStatus = "failed";
       updateResults();
     });
   }
