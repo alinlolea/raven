@@ -120,7 +120,6 @@
 
   const state = {
     testType: "standard",
-    inputMode: "individual",
     answers: [],
     answerInputs: [],
     answerBoxes: [],
@@ -129,7 +128,6 @@
 
   const dom = {
     testTypeGroup: document.getElementById("testTypeGroup"),
-    inputModeGroup: document.getElementById("inputModeGroup"),
     clientName: document.getElementById("clientName"),
     ageYears: document.getElementById("ageYears"),
     ageMonths: document.getElementById("ageMonths"),
@@ -366,10 +364,7 @@
 
   function setAnswersHint() {
     const total = getItemCount();
-    dom.answersHint.textContent =
-      state.inputMode === "individual"
-        ? `Enter values ${ANSWER_MIN}–${ANSWER_MAX} (${total} items).`
-        : `Paste values ${ANSWER_MIN}–${ANSWER_MAX} separated by spaces/newlines (${total} items max).`;
+    dom.answersHint.textContent = `Enter values ${ANSWER_MIN}–${ANSWER_MAX} (${total} items).`;
   }
 
   function parseBulk(text) {
@@ -781,42 +776,11 @@
     return null;
   }
 
-  function renderBulkAnswers() {
-    dom.answersArea.innerHTML = "";
-
-    const textarea = document.createElement("textarea");
-    textarea.className = "bulkArea";
-    textarea.id = "bulkAnswers";
-    textarea.placeholder = `Paste answers here (values ${ANSWER_MIN}–${ANSWER_MAX}). Example: 1 2 3 4 5 …`;
-    textarea.setAttribute("aria-label", "Bulk answers input");
-
-    textarea.addEventListener("input", () => {
-      const parsed = parseBulk(textarea.value);
-      const total = getItemCount();
-
-      state.answers = new Array(total).fill("");
-      for (let i = 0; i < total; i++) {
-        if (i < parsed.length) state.answers[i] = parsed[i];
-      }
-
-      updateResults();
-    });
-
-    dom.answersArea.appendChild(textarea);
-    state.bulkTextEl = textarea;
-
-    setTimeout(() => textarea.focus(), 0);
-  }
-
   function renderAnswers() {
     resetAnswersPreservingMode();
     setAnswersHint();
 
-    if (state.inputMode === "individual") {
-      renderIndividualAnswers();
-    } else {
-      renderBulkAnswers();
-    }
+    renderIndividualAnswers();
 
     // Reset result display on mode changes.
     updateResults();
@@ -944,7 +908,6 @@
 
   function syncSelectionsAndRender() {
     setActiveButton(dom.testTypeGroup, "test-type", state.testType);
-    setActiveButton(dom.inputModeGroup, "input-mode", state.inputMode);
     renderAnswers();
   }
 
@@ -958,15 +921,6 @@
       syncSelectionsAndRender();
       updateAgeUI();
       updateResults();
-    });
-
-    dom.inputModeGroup.addEventListener("click", (e) => {
-      const target = e.target.closest("button[data-input-mode]");
-      if (!target) return;
-      const next = target.getAttribute("data-input-mode");
-      if (!next) return;
-      state.inputMode = next;
-      syncSelectionsAndRender();
     });
 
     dom.clientName.addEventListener("input", () => {

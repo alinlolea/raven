@@ -112,10 +112,6 @@ body{
   }
 }
 
-.segmented[role="radiogroup"][aria-label="Input mode selection"]{
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
 .segBtn{
   appearance: none;
   border: 1px solid rgba(63, 94, 77, 0.28);
