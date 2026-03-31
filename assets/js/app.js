@@ -4,9 +4,15 @@
   const ANSWER_MIN = 1;
   const ANSWER_MAX = 8;
 
-  // Age range (years) supported by this UI.
-  const AGE_YEAR_MIN = 6;
-  const AGE_YEAR_MAX = 80;
+  // Age bounds are test-specific (CPM has tighter norms coverage).
+  const AGE_BOUNDS = {
+    spm: { minMonths: 6 * 12, maxMonths: 80 * 12 + 11, yearMin: 6, yearMax: 80 },
+    cpm: { minMonths: 3 * 12 + 9, maxMonths: 12 * 12 + 8, yearMin: 3, yearMax: 12 }
+  };
+
+  function getAgeBoundsForCurrentTest() {
+    return isCpmLike() ? AGE_BOUNDS.cpm : AGE_BOUNDS.spm;
+  }
 
   // Answer keys for UI validation (green/red feedback).
   // Arrays are column-based, 12 rows each.
@@ -155,10 +161,11 @@
   }
 
   function clampAgeYears(n) {
-    if (!Number.isFinite(n)) return AGE_YEAR_MIN;
+    const { yearMin, yearMax } = getAgeBoundsForCurrentTest();
+    if (!Number.isFinite(n)) return yearMin;
     let v = Math.round(n);
-    if (v < AGE_YEAR_MIN) v = AGE_YEAR_MIN;
-    if (v > AGE_YEAR_MAX) v = AGE_YEAR_MAX;
+    if (v < yearMin) v = yearMin;
+    if (v > yearMax) v = yearMax;
     return v;
   }
 
@@ -171,6 +178,10 @@
   }
 
   function updateAgeUI() {
+    // Keep placeholders aligned with current test limits.
+    const b = getAgeBoundsForCurrentTest();
+    dom.ageYears.placeholder = `${b.yearMin}–${b.yearMax}`;
+
     dom.ageGroupLine.textContent = "";
     dom.ageWarnLine.hidden = true;
     dom.ageWarnLine.textContent = "";
@@ -192,15 +203,18 @@
     const yearsNum = Number(yVal);
     if (!Number.isFinite(yearsNum)) return;
 
-    if (yearsNum < AGE_YEAR_MIN || yearsNum > AGE_YEAR_MAX) {
-      return;
-    }
-
     const years = yearsNum;
     const months = mVal === "" ? 0 : clampAgeMonths(Number(mVal));
     if (mVal !== "") dom.ageMonths.value = String(months);
 
     const total = getTotalMonths(years, months);
+    if (total < b.minMonths || total > b.maxMonths) {
+      dom.ageWarnLine.hidden = false;
+      dom.ageWarnLine.textContent = `Vârsta trebuie să fie între ${formatMonths(b.minMonths)} și ${formatMonths(b.maxMonths)}.`;
+      dom.ageYears.classList.add("is-invalid");
+      return;
+    }
+
     const group = getAgeGroup(total);
     if (group) {
       dom.ageGroupLine.textContent = `Grupă de vârstă: ${group.label}`;
@@ -208,6 +222,13 @@
       dom.ageWarnLine.hidden = false;
       dom.ageWarnLine.textContent = "Vârsta nu se încadrează în intervalul normelor disponibile.";
     }
+  }
+
+  function formatMonths(totalMonths) {
+    const t = Number(totalMonths);
+    const y = Math.floor(t / 12);
+    const m = t % 12;
+    return `${y} ani ${m} luni`;
   }
 
   function onAgeYearsInput() {
@@ -369,11 +390,14 @@
     if (yVal === "") return null;
     const n = Number(yVal);
     if (!Number.isFinite(n)) return null;
-    if (n < AGE_YEAR_MIN || n > AGE_YEAR_MAX) return null;
+    const b = getAgeBoundsForCurrentTest();
+    if (n < b.yearMin || n > b.yearMax) return null;
     const years = n;
     const mVal = dom.ageMonths.value;
     const months = mVal === "" ? 0 : clampAgeMonths(Number(mVal));
-    return getTotalMonths(years, months);
+    const total = getTotalMonths(years, months);
+    if (total < b.minMonths || total > b.maxMonths) return null;
+    return total;
   }
 
   /**
@@ -914,6 +938,8 @@
       if (!next) return;
       state.testType = next;
       syncSelectionsAndRender();
+      updateAgeUI();
+      updateResults();
     });
 
     dom.inputModeGroup.addEventListener("click", (e) => {
