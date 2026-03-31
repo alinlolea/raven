@@ -199,9 +199,10 @@ fieldset.field > legend.label{
 }
 
 .fieldAge .agePart{
-  display: grid;
-  justify-items: start;
-  gap: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
   min-width: 0;
 }
 
