@@ -4,6 +4,10 @@
   const ANSWER_MIN = 1;
   const ANSWER_MAX = 8;
 
+  // Age range (years) supported by this UI.
+  const AGE_YEAR_MIN = 6;
+  const AGE_YEAR_MAX = 80;
+
   /** @type {"pending"|"ok"|"failed"} */
   let ravenNormsStatus = "pending";
 
@@ -296,7 +300,7 @@
       const readyForNorms = totalMonths !== null && rawScore >= 1;
 
       if (!readyForNorms) {
-        blockReason = rawScore < 1 ? "need_at_least_one_correct" : "need_valid_age_5_80_or_months";
+        blockReason = rawScore < 1 ? "need_at_least_one_correct" : "need_valid_age_6_80_or_months";
         dom.interpretation.textContent = dash;
         spmPlus = null;
         ageIndex = null;
