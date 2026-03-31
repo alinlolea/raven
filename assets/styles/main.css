@@ -200,7 +200,7 @@ fieldset.field > legend.label{
 
 .fieldAge .agePart{
   display: grid;
-  justify-items: center;
+  justify-items: start;
   gap: 8px;
   min-width: 0;
 }
@@ -209,7 +209,7 @@ fieldset.field > legend.label{
   width: 6ch;
   min-width: 4.8rem;
   padding: 10px 12px;
-  text-align: center;
+  text-align: left;
   max-width: 100%;
   transition: box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease;
 }
