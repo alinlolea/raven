@@ -53,6 +53,24 @@
   /** @type {"pending"|"ok"|"failed"} */
   let ravenNormsStatus = "pending";
 
+  function getSpmCorrectFlatFor(testType) {
+    // Flat arrays are column-major: A1..A12, B1..B12, ... (matches CSV expectations).
+    if (testType === "standard" || testType === "spm-c") {
+      return Array.isArray(STANDARD_CORRECT_FLAT) ? STANDARD_CORRECT_FLAT : null;
+    }
+    if (testType === "spm-p") {
+      const cols = ["A", "B", "C", "D", "E"];
+      const out = [];
+      for (const c of cols) {
+        const arr = SPM_P_KEY.answersByCol[c];
+        if (!Array.isArray(arr) || arr.length !== 12) return null;
+        out.push(...arr);
+      }
+      return out;
+    }
+    return null;
+  }
+
   const TEST_DEFINITIONS = {
     // Existing internal type "standard" remains the only one wired to scoring/norms for now.
     // UI labels/types expanded; non-standard types are UI-only until logic is added.
@@ -340,21 +358,22 @@
     let blockReason = null;
 
     try {
-      if (state.testType !== "standard") {
-        blockReason = "not_standard_test";
+      if (state.testType !== "standard" && state.testType !== "spm-p") {
+        blockReason = "not_supported_test";
         dom.rawScore.textContent = dash;
         dom.interpretation.textContent = dash;
         return { rawScore, spmPlus, ageIndex, result, blockReason };
       }
 
-      if (!STANDARD_CORRECT_FLAT || STANDARD_CORRECT_FLAT.length === 0 || !state.answers.length) {
+      const correctFlat = getSpmCorrectFlatFor(state.testType);
+      if (!correctFlat || correctFlat.length === 0 || !state.answers.length) {
         blockReason = "no_answer_data";
         dom.rawScore.textContent = dash;
         dom.interpretation.textContent = dash;
         return { rawScore, spmPlus, ageIndex, result, blockReason };
       }
 
-      rawScore = calculateRawScore(state.answers, STANDARD_CORRECT_FLAT);
+      rawScore = calculateRawScore(state.answers, correctFlat);
       dom.rawScore.textContent = String(rawScore);
 
       const totalMonths = getUserTotalMonthsOrNull();
