@@ -215,10 +215,28 @@
       return;
     }
 
+    // Show age-band info when available.
+    // Note: `ageRanges` is SPM-only (starts at 5y in data.js), so for CPM we use RavenCNorms instead.
+    if (isCpmLike()) {
+      const idx =
+        window.RavenCNorms && typeof window.RavenCNorms.getAgeIndexForTotalMonths === "function"
+          ? window.RavenCNorms.getAgeIndexForTotalMonths(total)
+          : -1;
+      if (idx >= 0) {
+        const t =
+          window.RavenCNorms && typeof window.RavenCNorms._getTables === "function"
+            ? window.RavenCNorms._getTables()
+            : null;
+        const label = t?.ageGroups?.[idx]?.label;
+        if (label) dom.ageGroupLine.textContent = `Grupă de vârstă: ${label}`;
+      }
+      // Do not show the SPM-specific "norms unavailable" warning for CPM-valid ages.
+      return;
+    }
+
     const group = getAgeGroup(total);
-    if (group) {
-      dom.ageGroupLine.textContent = `Grupă de vârstă: ${group.label}`;
-    } else {
+    if (group) dom.ageGroupLine.textContent = `Grupă de vârstă: ${group.label}`;
+    else {
       dom.ageWarnLine.hidden = false;
       dom.ageWarnLine.textContent = "Vârsta nu se încadrează în intervalul normelor disponibile.";
     }
