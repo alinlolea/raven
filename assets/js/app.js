@@ -8,6 +8,48 @@
   const AGE_YEAR_MIN = 6;
   const AGE_YEAR_MAX = 80;
 
+  // Answer keys for UI validation (green/red feedback).
+  // Arrays are column-based, 12 rows each.
+  const CPM_C_KEY = {
+    cols: ["A", "AB", "B"],
+    answersByCol: {
+      A: [4, 5, 1, 2, 6, 3, 6, 2, 1, 3, 4, 5],
+      AB: [4, 5, 1, 6, 2, 1, 3, 4, 6, 3, 5, 2],
+      B: [2, 6, 1, 2, 1, 3, 5, 6, 4, 3, 4, 5]
+    }
+  };
+
+  const CPM_P_KEY = {
+    cols: ["A", "AB", "B"],
+    answersByCol: {
+      A: [4, 5, 1, 2, 6, 5, 1, 3, 4, 2, 3, 6],
+      AB: [4, 5, 1, 6, 2, 5, 4, 3, 2, 3, 1, 6],
+      B: [4, 1, 3, 6, 5, 4, 1, 3, 2, 5, 2, 6]
+    }
+  };
+
+  const SPM_P_KEY = {
+    cols: ["A", "B", "C", "D", "E"],
+    answersByCol: {
+      A: [4, 5, 1, 2, 6, 5, 1, 3, 4, 2, 3, 6],
+      B: [4, 1, 3, 6, 5, 4, 1, 3, 2, 5, 2, 6],
+      C: [7, 8, 4, 2, 8, 3, 7, 2, 5, 1, 6, 1],
+      D: [7, 8, 5, 3, 4, 2, 3, 1, 4, 6, 6, 5],
+      E: [5, 8, 6, 1, 2, 7, 4, 3, 6, 5, 1, 2]
+    }
+  };
+
+  const SPM_PLUS_KEY = {
+    cols: ["A", "B", "C", "D", "E"],
+    answersByCol: {
+      A: [4, 5, 1, 2, 6, 5, 1, 3, 4, 2, 3, 6],
+      B: [4, 1, 3, 6, 5, 4, 1, 3, 2, 5, 2, 6],
+      C: [5, 4, 7, 8, 1, 7, 6, 1, 6, 8, 2, 6],
+      D: [2, 1, 1, 2, 5, 8, 7, 6, 3, 4, 2, 5],
+      E: [7, 6, 4, 3, 4, 8, 3, 1, 5, 2, 5, 3]
+    }
+  };
+
   /** @type {"pending"|"ok"|"failed"} */
   let ravenNormsStatus = "pending";
 
@@ -404,18 +446,47 @@
     }
   }
 
-  function getStandardExpectedAnswer(domIndex) {
-    const row = Math.floor(domIndex / 5);
-    const col = domIndex % 5;
-    return STANDARD_CORRECT_FLAT[col * 12 + row];
+  function getExpectedAnswerForCurrentTest(domIndex) {
+    const { cols, rows } = getGridDef();
+    if (!cols || !rows) return null;
+
+    const row = Math.floor(domIndex / cols);
+    const col = domIndex % cols;
+    if (row < 0 || row >= rows) return null;
+
+    // SPM - C (existing internal "standard") uses STANDARD_CORRECT_FLAT (col-major A1..A12, B1..).
+    if (state.testType === "standard" || state.testType === "spm-c") {
+      if (!Array.isArray(STANDARD_CORRECT_FLAT)) return null;
+      const flatIdx = col * rows + row;
+      return STANDARD_CORRECT_FLAT[flatIdx] ?? null;
+    }
+
+    const colKey =
+      isSpmLike() ? ["A", "B", "C", "D", "E"][col] :
+      isCpmLike() ? ["A", "AB", "B"][col] :
+      null;
+    if (!colKey) return null;
+
+    const key =
+      state.testType === "cpm-c" ? CPM_C_KEY :
+      state.testType === "cpm-p" ? CPM_P_KEY :
+      state.testType === "spm-p" ? SPM_P_KEY :
+      state.testType === "spm-plus" ? SPM_PLUS_KEY :
+      null;
+
+    if (!key) return null;
+    const colArr = key.answersByCol[colKey];
+    if (!Array.isArray(colArr)) return null;
+    return colArr[row] ?? null;
   }
 
   function updateAnswerValidation(index) {
     const box = state.answerBoxes[index];
     if (!box) return;
     box.classList.remove("correct", "incorrect");
-    if (state.testType !== "standard" || state.answers[index] === "") return;
-    const expected = getStandardExpectedAnswer(index);
+    if (state.answers[index] === "") return;
+    const expected = getExpectedAnswerForCurrentTest(index);
+    if (expected === null || expected === undefined) return;
     const v = state.answers[index];
     if (Number(v) === Number(expected)) box.classList.add("correct");
     else box.classList.add("incorrect");
