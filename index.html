@@ -60,12 +60,26 @@
             />
           </div>
 
+          <div class="field">
+            <label class="label" for="birthDate">Data nașterii</label>
+            <input
+              class="input"
+              id="birthDate"
+              type="text"
+              inputmode="numeric"
+              autocomplete="bday"
+              placeholder="dd/mm/yyyy"
+              maxlength="10"
+              aria-describedby="ageGroupLine ageWarnLine"
+            />
+          </div>
+
           <fieldset class="field fieldAge">
-            <legend class="label">Vârstă</legend>
+            <legend class="label">Vârstă (calculată automat)</legend>
             <div class="ageRow">
               <div class="agePart">
                 <input
-                  class="input inputAge"
+                  class="input inputAge inputAge--computed"
                   id="ageYears"
                   name="ageYears"
                   type="text"
@@ -73,15 +87,16 @@
                   pattern="[0-9]*"
                   autocomplete="off"
                   maxlength="3"
-                  placeholder="6–80"
+                  placeholder="—"
                   aria-label="Ani"
                   aria-describedby="ageGroupLine ageWarnLine"
+                  disabled
                 />
                 <span class="ageSuffix" aria-hidden="true">ani</span>
               </div>
               <div class="agePart">
                 <input
-                  class="input inputAge"
+                  class="input inputAge inputAge--computed"
                   id="ageMonths"
                   name="ageMonths"
                   type="text"
@@ -89,9 +104,10 @@
                   pattern="[0-9]*"
                   autocomplete="off"
                   maxlength="2"
-                  placeholder="0–11"
+                  placeholder="—"
                   aria-label="Luni"
                   aria-describedby="ageGroupLine ageWarnLine"
+                  disabled
                 />
                 <span class="ageSuffix" aria-hidden="true">luni</span>
               </div>
@@ -113,7 +129,7 @@
         <section class="section resultsSection" id="resultSection">
           <div class="sectionHeader">
             <div class="sectionTitle">Result</div>
-            <div class="sectionHint">Updates when age (6–80) and at least one correct answer are present.</div>
+            <div class="sectionHint">Updates when data nașterii is valid for the selected test and at least one correct answer is present.</div>
           </div>
 
           <div class="resultGrid">
@@ -123,7 +139,10 @@
             </div>
             <div class="resultCard">
               <div class="resultLabel">Interpretation</div>
-              <div class="resultText" id="interpretation">-</div>
+              <div class="resultText resultText--stacked" id="interpretation">
+                <div class="interpLine" id="interpretation-line1">-</div>
+                <div class="interpLine interpLine--nivel" id="interpretation-line2" hidden></div>
+              </div>
             </div>
           </div>
         </section>

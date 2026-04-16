@@ -129,6 +129,7 @@
   const dom = {
     testTypeGroup: document.getElementById("testTypeGroup"),
     clientName: document.getElementById("clientName"),
+    birthDate: document.getElementById("birthDate"),
     ageYears: document.getElementById("ageYears"),
     ageMonths: document.getElementById("ageMonths"),
     ageGroupLine: document.getElementById("ageGroupLine"),
@@ -136,13 +137,209 @@
     answersHint: document.getElementById("answersHint"),
     answersArea: document.getElementById("answersArea"),
     rawScore: document.getElementById("raw-score"),
-    interpretation: document.getElementById("interpretation"),
+    interpretationLine1: document.getElementById("interpretation-line1"),
+    interpretationLine2: document.getElementById("interpretation-line2"),
     exportPdfBtn: document.getElementById("exportPdfBtn"),
     shareBtn: document.getElementById("shareBtn"),
     toast: document.getElementById("toast"),
     offlineStatus: document.getElementById("offlineStatus"),
     resultSection: document.getElementById("resultSection")
   };
+
+  function setInterpretationUI(line1, line2) {
+    if (dom.interpretationLine1) dom.interpretationLine1.textContent = line1;
+    if (dom.interpretationLine2) {
+      const t = line2 && String(line2).trim();
+      if (t) {
+        dom.interpretationLine2.textContent = t;
+        dom.interpretationLine2.hidden = false;
+      } else {
+        dom.interpretationLine2.textContent = "";
+        dom.interpretationLine2.hidden = true;
+      }
+    }
+  }
+
+  function getInterpretationPlainText() {
+    const a = dom.interpretationLine1 ? dom.interpretationLine1.textContent.trim() : "";
+    const b =
+      dom.interpretationLine2 && !dom.interpretationLine2.hidden
+        ? dom.interpretationLine2.textContent.trim()
+        : "";
+    return [a, b].filter(Boolean).join("\n");
+  }
+
+  /**
+   * @param {string|null|undefined} percentileStr
+   * @returns {number|null}
+   */
+  function parsePercentileToNumber(percentileStr) {
+    const t = String(percentileStr ?? "").trim();
+    if (!t) return null;
+    const rangeMatch = t.match(/(\d+(?:\.\d+)?)\s*%\s*[-–]\s*(\d+(?:\.\d+)?)\s*%/);
+    if (rangeMatch) return (Number(rangeMatch[1]) + Number(rangeMatch[2])) / 2;
+    const lt = t.match(/^<\s*(\d+(?:\.\d+)?)/);
+    if (lt) {
+      const cap = Number(lt[1]);
+      return Math.max(0, cap - 0.5);
+    }
+    const gt = t.match(/^>\s*(\d+(?:\.\d+)?)/);
+    if (gt) {
+      const floor = Number(gt[1]);
+      return floor + 0.01;
+    }
+    const single = t.match(/(\d+(?:\.\d+)?)\s*%?/);
+    if (single) return Number(single[1]);
+    return null;
+  }
+
+  /**
+   * @param {number|null} p
+   * @returns {string}
+   */
+  function getNivelLineFromPercentileNumber(p) {
+    if (p === null || !Number.isFinite(p)) return "";
+    if (p > 94) return "Nivel I [Intelect de nivel superior]";
+    if (p >= 90) return "Nivel II+ [Capacitate intelectuală peste medie]";
+    if (p >= 75) return "Nivel II [Capacitate intelectuală peste medie]";
+    if (p >= 50) return "Nivel III+ [Intelect de nivel mediu]";
+    if (p >= 25) return "Nivel III- [Intelect de nivel mediu]";
+    if (p >= 11) return "Nivel IV [Capacitate intelectuală sub-medie]";
+    if (p >= 6) return "Nivel IV- [Capacitate intelectuală sub-medie]";
+    return "Nivel V [Deficiență intelectuală]";
+  }
+
+  function buildInterpretationLines(result) {
+    const line1 = `Percentilă: ${result.percentile} | IQ: ${result.iq}`;
+    const pNum = parsePercentileToNumber(result.percentile);
+    const line2 = getNivelLineFromPercentileNumber(pNum);
+    return { line1, line2 };
+  }
+
+  function formatBirthDigits(digits) {
+    const d = String(digits).replace(/\D/g, "").slice(0, 8);
+    if (d.length <= 2) return d;
+    if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
+    return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
+  }
+
+  function isValidCalendarDate(dd, mm, yyyy) {
+    if (!Number.isFinite(dd) || !Number.isFinite(mm) || !Number.isFinite(yyyy)) return false;
+    if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return false;
+    if (yyyy < 1900 || yyyy > 2100) return false;
+    const d = new Date(yyyy, mm - 1, dd);
+    return d.getFullYear() === yyyy && d.getMonth() === mm - 1 && d.getDate() === dd;
+  }
+
+  function ageYearsMonthsFromDob(dob, today) {
+    let years = today.getFullYear() - dob.getFullYear();
+    let months = today.getMonth() - dob.getMonth();
+    if (today.getDate() < dob.getDate()) months--;
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+    if (years < 0 || (years === 0 && months < 0)) return null;
+    return { years: Math.max(0, years), months: Math.max(0, months) };
+  }
+
+  function clearDerivedAge() {
+    dom.ageYears.value = "";
+    dom.ageMonths.value = "";
+  }
+
+  function syncAgeFromBirthDate() {
+    if (!dom.birthDate) return;
+    const digits = dom.birthDate.value.replace(/\D/g, "");
+    if (digits.length < 8) {
+      clearDerivedAge();
+      updateAgeUI();
+      return;
+    }
+
+    const dd = Number(digits.slice(0, 2));
+    const mm = Number(digits.slice(2, 4));
+    const yyyy = Number(digits.slice(4, 8));
+
+    if (!isValidCalendarDate(dd, mm, yyyy)) {
+      dom.ageWarnLine.hidden = false;
+      dom.ageWarnLine.textContent = "Dată invalidă.";
+      clearDerivedAge();
+      updateAgeUI();
+      return;
+    }
+
+    const dob = new Date(yyyy, mm - 1, dd);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    dob.setHours(0, 0, 0, 0);
+
+    if (dob > today) {
+      dom.ageWarnLine.hidden = false;
+      dom.ageWarnLine.textContent = "Data nașterii nu poate fi în viitor.";
+      clearDerivedAge();
+      updateAgeUI();
+      return;
+    }
+
+    const ym = ageYearsMonthsFromDob(dob, today);
+    if (!ym) {
+      dom.ageWarnLine.hidden = false;
+      dom.ageWarnLine.textContent = "Dată invalidă.";
+      clearDerivedAge();
+      updateAgeUI();
+      return;
+    }
+
+    const b = getAgeBoundsForCurrentTest();
+    const totalMonths = getTotalMonths(ym.years, ym.months);
+    if (totalMonths < b.minMonths || totalMonths > b.maxMonths) {
+      dom.ageWarnLine.hidden = false;
+      dom.ageWarnLine.textContent = `Vârsta din dată trebuie să fie între ${formatMonths(b.minMonths)} și ${formatMonths(b.maxMonths)}.`;
+      clearDerivedAge();
+      updateAgeUI();
+      return;
+    }
+
+    dom.ageYears.value = String(ym.years);
+    dom.ageMonths.value = String(ym.months);
+    dom.ageWarnLine.hidden = true;
+    dom.ageWarnLine.textContent = "";
+    updateAgeUI();
+  }
+
+  function onBirthDateInput() {
+    if (!dom.birthDate) return;
+    const formatted = formatBirthDigits(dom.birthDate.value);
+    dom.birthDate.value = formatted;
+    requestAnimationFrame(() => {
+      try {
+        const len = formatted.length;
+        dom.birthDate.setSelectionRange(len, len);
+      } catch {
+        // Ignore selection errors.
+      }
+    });
+    syncAgeFromBirthDate();
+    updateResults();
+  }
+
+  function onBirthDatePaste(e) {
+    e.preventDefault();
+    const clip = (e.clipboardData || window.clipboardData)?.getData("text") || "";
+    const merged = (dom.birthDate.value.replace(/\D/g, "") + clip.replace(/\D/g, "")).slice(0, 8);
+    dom.birthDate.value = formatBirthDigits(merged);
+    syncAgeFromBirthDate();
+    updateResults();
+    requestAnimationFrame(() => {
+      try {
+        const len = dom.birthDate.value.length;
+        dom.birthDate.setSelectionRange(len, len);
+      } catch {
+        // Ignore selection errors.
+      }
+    });
+  }
 
   function showToast(message) {
     dom.toast.textContent = message;
@@ -247,72 +444,10 @@
     return `${y} ani ${m} luni`;
   }
 
-  function onAgeYearsInput() {
-    const raw = dom.ageYears.value;
-    if (raw === "") {
-      updateAgeUI();
-      updateResults();
-      return;
-    }
-    const cleaned = raw.replace(/\D/g, "");
-    if (cleaned !== raw) {
-      dom.ageYears.value = cleaned;
-    }
-    updateAgeUI();
-    updateResults();
-  }
-
-  function onAgeYearsBlur() {
-    const raw = dom.ageYears.value.trim();
-    if (raw === "") {
-      updateAgeUI();
-      updateResults();
-      return;
-    }
-    const n = Number(raw);
-    if (!Number.isFinite(n)) {
-      dom.ageYears.value = "";
-    } else {
-      const c = clampAgeYears(n);
-      dom.ageYears.value = String(c);
-      dom.ageYears.classList.toggle("is-invalid", n !== c);
-    }
-    updateAgeUI();
-    updateResults();
-  }
-
-  function onAgeMonthsInput() {
-    const raw = dom.ageMonths.value;
-    if (raw === "") {
-      updateAgeUI();
-      updateResults();
-      return;
-    }
-    const cleaned = raw.replace(/\D/g, "");
-    if (cleaned !== raw) {
-      dom.ageMonths.value = cleaned;
-    }
-    updateAgeUI();
-    updateResults();
-  }
-
-  function onAgeMonthsBlur() {
-    const raw = dom.ageMonths.value;
-    if (raw === "") {
-      updateAgeUI();
-      updateResults();
-      return;
-    }
-    const n = Number(raw);
-    if (!Number.isFinite(n)) {
-      dom.ageMonths.value = "";
-    } else {
-      const c = clampAgeMonths(n);
-      dom.ageMonths.value = String(c);
-      dom.ageMonths.classList.toggle("is-invalid", n !== c);
-    }
-    updateAgeUI();
-    updateResults();
+  function formatBirthDateForExport() {
+    const v = dom.birthDate && dom.birthDate.value.trim();
+    if (!v) return "(not provided)";
+    return v;
   }
 
   function formatAgeForExport() {
@@ -432,7 +567,7 @@
       if (!isSpmBacked && !isCpmBacked) {
         blockReason = "not_supported_test";
         dom.rawScore.textContent = dash;
-        dom.interpretation.textContent = dash;
+        setInterpretationUI(dash, "");
         return { rawScore, spmPlus, ageIndex, result, blockReason };
       }
 
@@ -440,7 +575,7 @@
       if (!correctFlat || correctFlat.length === 0 || !state.answers.length) {
         blockReason = "no_answer_data";
         dom.rawScore.textContent = dash;
-        dom.interpretation.textContent = dash;
+        setInterpretationUI(dash, "");
         return { rawScore, spmPlus, ageIndex, result, blockReason };
       }
 
@@ -451,8 +586,8 @@
       const readyForNorms = totalMonths !== null && rawScore >= 1;
 
       if (!readyForNorms) {
-        blockReason = rawScore < 1 ? "need_at_least_one_correct" : "need_valid_age_6_80_or_months";
-        dom.interpretation.textContent = dash;
+        blockReason = rawScore < 1 ? "need_at_least_one_correct" : "need_valid_birth_date_or_age";
+        setInterpretationUI(dash, "");
         spmPlus = null;
         ageIndex = null;
         result = null;
@@ -462,34 +597,37 @@
       if (isCpmBacked) {
         if (!window.RavenCNorms || typeof window.RavenCNorms.getAgeIndexForTotalMonths !== "function") {
           blockReason = ravenCNormsStatus === "pending" ? "cpm_norms_pending" : "cpm_norms_missing";
-          dom.interpretation.textContent = ravenCNormsStatus === "pending" ? "Se încarcă normele…" : dash;
+          setInterpretationUI(ravenCNormsStatus === "pending" ? "Se încarcă normele…" : dash, "");
           return { rawScore, spmPlus, ageIndex, result, blockReason };
         }
 
         ageIndex = window.RavenCNorms.getAgeIndexForTotalMonths(totalMonths);
         if (ageIndex < 0) {
           blockReason = "age_outside_csv_bands";
-          dom.interpretation.textContent = "Vârsta nu se încadrează în normele CSV.";
+          setInterpretationUI("Vârsta nu se încadrează în normele CSV.", "");
           result = null;
           return { rawScore, spmPlus, ageIndex, result, blockReason };
         }
 
         if (typeof window.RavenCNorms.getResult !== "function") {
           blockReason = "cpm_getResult_missing";
-          dom.interpretation.textContent = dash;
+          setInterpretationUI(dash, "");
           result = null;
           return { rawScore, spmPlus, ageIndex, result, blockReason };
         }
 
         result = window.RavenCNorms.getResult(rawScore, ageIndex);
         if (!result) {
-          dom.interpretation.textContent = ravenCNormsStatus === "pending" ? "Se încarcă normele…" : dash;
+          setInterpretationUI(ravenCNormsStatus === "pending" ? "Se încarcă normele…" : dash, "");
           blockReason = "cpm_getResult_null";
           return { rawScore, spmPlus, ageIndex, result, blockReason };
         }
 
         blockReason = null;
-        dom.interpretation.textContent = `Percentilă: ${result.percentile} | IQ: ${result.iq}`;
+        {
+          const { line1, line2 } = buildInterpretationLines(result);
+          setInterpretationUI(line1, line2);
+        }
         return { rawScore, spmPlus, ageIndex, result, blockReason };
       }
 
@@ -500,7 +638,7 @@
       } else {
         if (typeof window.getSPMPlus !== "function") {
           blockReason = "getSPMPlus_missing";
-          dom.interpretation.textContent = dash;
+          setInterpretationUI(dash, "");
           spmPlus = null;
           ageIndex = null;
           result = null;
@@ -511,13 +649,13 @@
         if (spmPlus === null || spmPlus === undefined) {
           if (ravenNormsStatus === "pending") {
             blockReason = "norms_pending_or_raw_out_of_table";
-            dom.interpretation.textContent = "Se încarcă normele…";
+            setInterpretationUI("Se încarcă normele…", "");
           } else if (ravenNormsStatus === "failed") {
             blockReason = "norms_csv_failed";
-            dom.interpretation.textContent = "Norme indisponibile (CSV).";
+            setInterpretationUI("Norme indisponibile (CSV).", "");
           } else {
             blockReason = "getSPMPlus_null";
-            dom.interpretation.textContent = dash;
+            setInterpretationUI(dash, "");
           }
           ageIndex = null;
           result = null;
@@ -533,14 +671,14 @@
 
       if (ageIndex < 0) {
         blockReason = "age_outside_csv_bands";
-        dom.interpretation.textContent = "Vârsta nu se încadrează în normele CSV.";
+        setInterpretationUI("Vârsta nu se încadrează în normele CSV.", "");
         result = null;
         return { rawScore, spmPlus, ageIndex, result, blockReason };
       }
 
       if (typeof window.getResult !== "function") {
         blockReason = "getResult_missing";
-        dom.interpretation.textContent = dash;
+        setInterpretationUI(dash, "");
         result = null;
         return { rawScore, spmPlus, ageIndex, result, blockReason };
       }
@@ -548,18 +686,21 @@
       result = window.getResult(spmPlus, ageIndex);
       if (!result) {
         blockReason = "getResult_null";
-        dom.interpretation.textContent = dash;
+        setInterpretationUI(dash, "");
         return { rawScore, spmPlus, ageIndex, result, blockReason };
       }
 
       blockReason = null;
-      dom.interpretation.textContent = `Percentilă: ${result.percentile} | IQ: ${result.iq}`;
+      {
+        const { line1, line2 } = buildInterpretationLines(result);
+        setInterpretationUI(line1, line2);
+      }
       return { rawScore, spmPlus, ageIndex, result, blockReason };
     } catch (e) {
       console.error("[Raven] updateResults:", e);
       blockReason = "exception";
       dom.rawScore.textContent = dash;
-      dom.interpretation.textContent = dash;
+      setInterpretationUI(dash, "");
       return { rawScore, spmPlus, ageIndex, result, blockReason };
     }
   }
@@ -797,10 +938,11 @@
 
     const payload = {
       clientName: dom.clientName.value.trim() || "(not provided)",
+      birthDate: formatBirthDateForExport(),
       age: formatAgeForExport(),
       testType: testLabel,
       rawScore: dom.rawScore.textContent,
-      interpretation: dom.interpretation.textContent,
+      interpretation: getInterpretationPlainText(),
       answersText
     };
 
@@ -836,6 +978,7 @@
             <div class="card">
               <div class="kv">
                 <div class="k">Client</div><div class="v">${escapeHtml(payload.clientName)}</div>
+                <div class="k">Data nașterii</div><div class="v">${escapeHtml(payload.birthDate)}</div>
                 <div class="k">Vârstă</div><div class="v">${escapeHtml(payload.age)}</div>
                 <div class="k">Test type</div><div class="v">${escapeHtml(payload.testType)}</div>
                 <div class="k">Raw score</div><div class="v">${escapeHtml(payload.rawScore)}</div>
@@ -871,12 +1014,15 @@
   async function share() {
     const testLabel = TEST_DEFINITIONS[state.testType].label;
 
+    const interp = getInterpretationPlainText();
     const summary = [
       `Digital Raven`,
       `Test: ${testLabel}`,
       dom.clientName.value.trim() ? `Client: ${dom.clientName.value.trim()}` : null,
+      dom.birthDate && dom.birthDate.value.trim() ? `Data nașterii: ${dom.birthDate.value.trim()}` : null,
       dom.ageYears.value ? `Vârstă: ${formatAgeForExport()}` : null,
-      `Raw score: ${dom.rawScore.textContent}`
+      `Raw score: ${dom.rawScore.textContent}`,
+      interp && interp !== "-" ? `Interpretare:\n${interp}` : null
     ]
       .filter(Boolean)
       .join("\n");
@@ -918,18 +1064,17 @@
       const next = target.getAttribute("data-test-type");
       if (!next) return;
       state.testType = next;
+      syncAgeFromBirthDate();
       syncSelectionsAndRender();
-      updateAgeUI();
-      updateResults();
     });
 
     dom.clientName.addEventListener("input", () => {
       updateResults();
     });
-    dom.ageYears.addEventListener("input", onAgeYearsInput);
-    dom.ageYears.addEventListener("blur", onAgeYearsBlur);
-    dom.ageMonths.addEventListener("input", onAgeMonthsInput);
-    dom.ageMonths.addEventListener("blur", onAgeMonthsBlur);
+    if (dom.birthDate) {
+      dom.birthDate.addEventListener("input", onBirthDateInput);
+      dom.birthDate.addEventListener("paste", onBirthDatePaste);
+    }
 
     dom.exportPdfBtn.addEventListener("click", exportPdf);
     dom.shareBtn.addEventListener("click", share);
@@ -974,7 +1119,7 @@
     initOfflineIndicator();
     registerServiceWorker();
     setAnswersHint();
-    updateAgeUI();
+    syncAgeFromBirthDate();
     syncSelectionsAndRender();
     void Promise.resolve(window.RavenNorms && window.RavenNorms.ready)
       .then(() => {
