@@ -216,11 +216,40 @@
     return { line1, line2 };
   }
 
-  function formatBirthDigits(digits) {
-    const d = String(digits).replace(/\D/g, "").slice(0, 8);
-    if (d.length <= 2) return d;
-    if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
-    return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
+  const BIRTH_EMPTY = "_";
+
+  /** @param {string} value */
+  function getDigitsFromBirthField(value) {
+    return String(value ?? "").replace(/\D/g, "").slice(0, 8);
+  }
+
+  /** @param {string} digitStr up to 8 digits */
+  function formatBirthTemplate(digitStr) {
+    const d = getDigitsFromBirthField(digitStr);
+    const c = (i) => (i < d.length ? d[i] : BIRTH_EMPTY);
+    return `${c(0)}${c(1)}/${c(2)}${c(3)}/${c(4)}${c(5)}${c(6)}${c(7)}`;
+  }
+
+  /** Caret index (0–10) after entering `k` digits. */
+  function caretPositionAfterDigits(k) {
+    if (k <= 0) return 0;
+    const pos = [1, 3, 4, 6, 7, 8, 9, 10];
+    return pos[k - 1];
+  }
+
+  /** @param {string} digitsRaw */
+  function applyBirthDateFieldFromDigits(digitsRaw) {
+    if (!dom.birthDate) return;
+    const digits = getDigitsFromBirthField(digitsRaw);
+    dom.birthDate.value = formatBirthTemplate(digits);
+    const pos = caretPositionAfterDigits(digits.length);
+    requestAnimationFrame(() => {
+      try {
+        dom.birthDate.setSelectionRange(pos, pos);
+      } catch {
+        // Ignore selection errors.
+      }
+    });
   }
 
   function isValidCalendarDate(dd, mm, yyyy) {
@@ -250,7 +279,7 @@
 
   function syncAgeFromBirthDate() {
     if (!dom.birthDate) return;
-    const digits = dom.birthDate.value.replace(/\D/g, "");
+    const digits = getDigitsFromBirthField(dom.birthDate.value);
     if (digits.length < 8) {
       clearDerivedAge();
       updateAgeUI();
@@ -310,16 +339,8 @@
 
   function onBirthDateInput() {
     if (!dom.birthDate) return;
-    const formatted = formatBirthDigits(dom.birthDate.value);
-    dom.birthDate.value = formatted;
-    requestAnimationFrame(() => {
-      try {
-        const len = formatted.length;
-        dom.birthDate.setSelectionRange(len, len);
-      } catch {
-        // Ignore selection errors.
-      }
-    });
+    const digits = getDigitsFromBirthField(dom.birthDate.value);
+    applyBirthDateFieldFromDigits(digits);
     syncAgeFromBirthDate();
     updateResults();
   }
@@ -327,18 +348,18 @@
   function onBirthDatePaste(e) {
     e.preventDefault();
     const clip = (e.clipboardData || window.clipboardData)?.getData("text") || "";
-    const merged = (dom.birthDate.value.replace(/\D/g, "") + clip.replace(/\D/g, "")).slice(0, 8);
-    dom.birthDate.value = formatBirthDigits(merged);
+    const merged = (getDigitsFromBirthField(dom.birthDate.value) + clip.replace(/\D/g, "")).slice(0, 8);
+    applyBirthDateFieldFromDigits(merged);
     syncAgeFromBirthDate();
     updateResults();
-    requestAnimationFrame(() => {
-      try {
-        const len = dom.birthDate.value.length;
-        dom.birthDate.setSelectionRange(len, len);
-      } catch {
-        // Ignore selection errors.
-      }
-    });
+  }
+
+  function onBirthDateFocus() {
+    if (!dom.birthDate) return;
+    const v = dom.birthDate.value;
+    if (v === "" || v.trim() === "") {
+      applyBirthDateFieldFromDigits("");
+    }
   }
 
   function showToast(message) {
@@ -445,9 +466,11 @@
   }
 
   function formatBirthDateForExport() {
-    const v = dom.birthDate && dom.birthDate.value.trim();
-    if (!v) return "(not provided)";
-    return v;
+    if (!dom.birthDate) return "(not provided)";
+    const digits = getDigitsFromBirthField(dom.birthDate.value);
+    if (digits.length === 0) return "(not provided)";
+    if (digits.length === 8) return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+    return formatBirthTemplate(digits);
   }
 
   function formatAgeForExport() {
@@ -1019,7 +1042,9 @@
       `Digital Raven`,
       `Test: ${testLabel}`,
       dom.clientName.value.trim() ? `Client: ${dom.clientName.value.trim()}` : null,
-      dom.birthDate && dom.birthDate.value.trim() ? `Data nașterii: ${dom.birthDate.value.trim()}` : null,
+      getDigitsFromBirthField(dom.birthDate?.value || "").length > 0
+        ? `Data nașterii: ${formatBirthDateForExport()}`
+        : null,
       dom.ageYears.value ? `Vârstă: ${formatAgeForExport()}` : null,
       `Raw score: ${dom.rawScore.textContent}`,
       interp && interp !== "-" ? `Interpretare:\n${interp}` : null
@@ -1074,6 +1099,7 @@
     if (dom.birthDate) {
       dom.birthDate.addEventListener("input", onBirthDateInput);
       dom.birthDate.addEventListener("paste", onBirthDatePaste);
+      dom.birthDate.addEventListener("focus", onBirthDateFocus);
     }
 
     dom.exportPdfBtn.addEventListener("click", exportPdf);
@@ -1119,6 +1145,9 @@
     initOfflineIndicator();
     registerServiceWorker();
     setAnswersHint();
+    if (dom.birthDate) {
+      dom.birthDate.value = formatBirthTemplate("");
+    }
     syncAgeFromBirthDate();
     syncSelectionsAndRender();
     void Promise.resolve(window.RavenNorms && window.RavenNorms.ready)

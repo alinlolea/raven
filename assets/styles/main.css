@@ -487,6 +487,11 @@ fieldset.field > legend.label{
   color: var(--text);
 }
 
+.input--birthMask{
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
 .resultText{
   margin-top: 10px;
   font-size: 14.5px;
