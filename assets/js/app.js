@@ -337,6 +337,64 @@
     updateAgeUI();
   }
 
+  function appendBirthDigit(ch) {
+    if (!dom.birthDate || !/^[0-9]$/.test(ch)) return;
+    let d = getDigitsFromBirthField(dom.birthDate.value);
+    if (d.length >= 8) return;
+    d += ch;
+    applyBirthDateFieldFromDigits(d);
+    syncAgeFromBirthDate();
+    updateResults();
+  }
+
+  function trimBirthLastDigit() {
+    if (!dom.birthDate) return;
+    const d = getDigitsFromBirthField(dom.birthDate.value).slice(0, -1);
+    applyBirthDateFieldFromDigits(d);
+    syncAgeFromBirthDate();
+    updateResults();
+  }
+
+  /** @param {KeyboardEvent} e */
+  function keyEventToDigit(e) {
+    const k = e.key;
+    if (/^[0-9]$/.test(k)) return k;
+    if (e.code && /^Digit[0-9]$/.test(e.code)) return e.code.slice(5);
+    if (e.code && /^Numpad[0-9]$/.test(e.code)) return e.code.slice(6);
+    return null;
+  }
+
+  /** Prefer this path: browser never inserts into `_` — we replace slots with digits only. */
+  function onBirthDateBeforeInput(e) {
+    if (!dom.birthDate) return;
+    const it = e.inputType;
+    if (it === "insertFromPaste") return;
+    if (it === "insertText" && e.data && /^[0-9]$/.test(e.data)) {
+      e.preventDefault();
+      appendBirthDigit(e.data);
+      return;
+    }
+    if (it === "deleteContentBackward" || it === "deleteContentForward") {
+      e.preventDefault();
+      trimBirthLastDigit();
+    }
+  }
+
+  /** Fallback when `beforeinput` is not available. */
+  function onBirthDateKeydownFallback(e) {
+    if (!dom.birthDate) return;
+    const digit = keyEventToDigit(e);
+    if (digit) {
+      e.preventDefault();
+      appendBirthDigit(digit);
+      return;
+    }
+    if (e.key === "Backspace" || e.key === "Delete") {
+      e.preventDefault();
+      trimBirthLastDigit();
+    }
+  }
+
   function onBirthDateInput() {
     if (!dom.birthDate) return;
     const digits = getDigitsFromBirthField(dom.birthDate.value);
@@ -1109,6 +1167,13 @@
       updateResults();
     });
     if (dom.birthDate) {
+      const supportsBeforeInput =
+        typeof InputEvent !== "undefined" && typeof InputEvent.prototype !== "undefined" && "inputType" in InputEvent.prototype;
+      if (supportsBeforeInput) {
+        dom.birthDate.addEventListener("beforeinput", onBirthDateBeforeInput);
+      } else {
+        dom.birthDate.addEventListener("keydown", onBirthDateKeydownFallback);
+      }
       dom.birthDate.addEventListener("input", onBirthDateInput);
       dom.birthDate.addEventListener("paste", onBirthDatePaste);
       dom.birthDate.addEventListener("focus", onBirthDateFocus);
