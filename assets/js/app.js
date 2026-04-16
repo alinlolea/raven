@@ -362,6 +362,18 @@
     }
   }
 
+  /** Sets `__/__/____` from current digits; repeat after paint to override browser autofill/clearing. */
+  function ensureBirthDateMaskVisible() {
+    if (!dom.birthDate) return;
+    const sync = () => {
+      if (!dom.birthDate) return;
+      applyBirthDateFieldFromDigits(getDigitsFromBirthField(dom.birthDate.value));
+    };
+    sync();
+    requestAnimationFrame(sync);
+    setTimeout(sync, 100);
+  }
+
   function showToast(message) {
     dom.toast.textContent = message;
     // Let screen readers announce changes.
@@ -1145,9 +1157,7 @@
     initOfflineIndicator();
     registerServiceWorker();
     setAnswersHint();
-    if (dom.birthDate) {
-      dom.birthDate.value = formatBirthTemplate("");
-    }
+    ensureBirthDateMaskVisible();
     syncAgeFromBirthDate();
     syncSelectionsAndRender();
     void Promise.resolve(window.RavenNorms && window.RavenNorms.ready)
