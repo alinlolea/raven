@@ -912,10 +912,19 @@
   }
 
   function buildDiscrepanteHtml(totalRawScore) {
-    const fallback = "Discrepante: A[0], B[0], C[0], D[0], E[0]";
-    if (!window.Discrepante || typeof window.Discrepante.getExpected !== "function") return fallback;
-    const expected = window.Discrepante.getExpected(Number(totalRawScore));
-    if (!expected) return fallback;
+    if (!window.Discrepante || typeof window.Discrepante.getExpected !== "function") {
+      return "Discrepante: A[0], B[0], C[0], D[0], E[0]";
+    }
+
+    const total = Number(totalRawScore);
+    // If the CSV has no row for low totals (e.g. <10), use the first defined baseline (10)
+    // so the UI starts with meaningful negative discrepancies and updates as answers are entered.
+    const expected =
+      window.Discrepante.getExpected(total) ||
+      window.Discrepante.getExpected(10);
+    if (!expected) {
+      return "Discrepante: A[0], B[0], C[0], D[0], E[0]";
+    }
 
     const actual = getSpmUserScaleCorrectCounts();
     const parts = getSpmScaleLetters().map((L) => {
