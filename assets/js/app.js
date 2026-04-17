@@ -242,10 +242,15 @@
     const idx = Number(ageIndex);
     if (!t || !Array.isArray(t.rows) || !t.rows.length) return null;
     if (!Number.isFinite(idx) || idx < 0) return null;
-    const row0 = t.rows[0];
-    const pair = row0?.agePairs?.[idx];
-    if (!pair) return null;
-    return { percentile: pair.percentile, iq: pair.iq, ageLabel: t.ageGroups?.[idx]?.label };
+    for (const row of t.rows) {
+      const pair = row?.agePairs?.[idx];
+      if (!pair) continue;
+      const p = String(pair.percentile ?? "").trim();
+      const iq = String(pair.iq ?? "").trim();
+      if (!p && !iq) continue;
+      return { percentile: pair.percentile, iq: pair.iq, ageLabel: t.ageGroups?.[idx]?.label };
+    }
+    return null;
   }
 
   function getLowestCpmResultForAgeIndex(ageIndex) {
@@ -256,10 +261,15 @@
     const idx = Number(ageIndex);
     if (!t || !Array.isArray(t.rows) || !t.rows.length) return null;
     if (!Number.isFinite(idx) || idx < 0) return null;
-    const row0 = t.rows[0];
-    const pair = row0?.agePairs?.[idx];
-    if (!pair) return null;
-    return { percentile: pair.percentile, iq: pair.iq, ageLabel: t.ageGroups?.[idx]?.label };
+    for (const row of t.rows) {
+      const pair = row?.agePairs?.[idx];
+      if (!pair) continue;
+      const p = String(pair.percentile ?? "").trim();
+      const iq = String(pair.iq ?? "").trim();
+      if (!p && !iq) continue;
+      return { percentile: pair.percentile, iq: pair.iq, ageLabel: t.ageGroups?.[idx]?.label };
+    }
+    return null;
   }
 
   const BIRTH_EMPTY = "_";
