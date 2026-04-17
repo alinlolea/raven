@@ -1208,125 +1208,164 @@
     updateResults();
   }
 
-  function exportPdf() {
-    // Generate a professional print layout; user can save as PDF.
+  async function exportPdf() {
+    const pdfLib = /** @type {any} */ (window).PDFLib;
+    if (!pdfLib) {
+      showToast("PDF generator not loaded yet. Try again in a second.");
+      return;
+    }
+
+    const title = "Raport de evaluare Raven";
     const testLabel = TEST_DEFINITIONS[state.testType].label;
-    const clientName = dom.clientName.value.trim() || "-";
-    const birthDate = formatBirthDateForExport();
+    const name = dom.clientName.value.trim() || "-";
+    const dob = formatBirthDateForExport();
     const age = formatAgeForExport();
     const rawScore = dom.rawScore.textContent || "-";
     const interpretation = getInterpretationPlainText() || "-";
 
-    const title = "Raport de evaluare Raven";
-    const answersTableHtml = buildAnswersTableHtml();
+    const { PDFDocument, StandardFonts, rgb } = pdfLib;
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage([595.28, 841.89]); // A4 portrait in points
+    const { width, height } = page.getSize();
 
-    const html = `<!doctype html>
-      <html lang="ro">
-        <head>
-          <meta charset="utf-8" />
-          <meta name="viewport" content="width=device-width, initial-scale=1" />
-          <title>${escapeHtml(title)}</title>
-          <style>
-            @page { margin: 18mm; }
-            body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; color: #1F2933; }
-            .h1 { font-size: 18px; font-weight: 800; margin: 0 0 14px; }
-            .meta { display: grid; grid-template-columns: 140px 1fr; gap: 6px 14px; margin-bottom: 14px; }
-            .k { font-weight: 700; opacity: 0.85; }
-            .v { white-space: pre-wrap; }
-            .row2 { display: flex; gap: 18px; }
-            .section { margin-top: 14px; }
-            .sectionTitle { font-size: 13.5px; font-weight: 800; margin: 0 0 8px; opacity: 0.92; }
-            table { width: 100%; border-collapse: collapse; }
-            th, td { border: 1px solid rgba(63, 94, 77, 0.25); padding: 6px 8px; font-size: 12.5px; }
-            th { background: rgba(79, 111, 95, 0.08); text-align: center; font-weight: 800; }
-            td { text-align: center; height: 22px; }
-            .left { text-align: left; }
-            .small { font-size: 12px; opacity: 0.85; }
-          </style>
-        </head>
-        <body>
-          <div class="h1">${escapeHtml(title)}</div>
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-          <div class="meta">
-            <div class="k">Name</div><div class="v">${escapeHtml(clientName)}</div>
-            <div class="k">DOB</div><div class="v">${escapeHtml(birthDate)} <span class="small">[${escapeHtml(age)}]</span></div>
-            <div class="k">Test Type</div><div class="v">${escapeHtml(testLabel)}</div>
-          </div>
+    const margin = 48;
+    let y = height - margin;
 
-          <div class="section">
-            <div class="sectionTitle">Answers</div>
-            ${answersTableHtml}
-          </div>
+    function drawText(text, x, size, isBold = false) {
+      page.drawText(String(text ?? ""), {
+        x,
+        y,
+        size,
+        font: isBold ? fontBold : font,
+        color: rgb(0.12, 0.16, 0.2)
+      });
+    }
 
-          <div class="section">
-            <div class="meta">
-              <div class="k">Raw Score</div><div class="v">${escapeHtml(rawScore)}</div>
-              <div class="k">Interpretation</div><div class="v">${escapeHtml(interpretation)}</div>
-            </div>
-          </div>
-        </body>
-      </html>`;
+    function drawKeyValue(label, value) {
+      const labelX = margin;
+      const valueX = margin + 160;
+      drawText(label, labelX, 11, true);
+      drawText(value, valueX, 11, false);
+      y -= 18;
+    }
 
-    printHtmlToPdf(html, `${title} - ${clientName}`.trim());
-  }
+    // Title
+    drawText(title, margin, 16, true);
+    y -= 26;
 
-  function buildAnswersTableHtml() {
+    drawKeyValue("Name", name);
+    drawKeyValue("DOB", `${dob}  [${age}]`);
+    drawKeyValue("Test Type", testLabel);
+    y -= 8;
+
+    // Answers section title
+    drawText("Answers", margin, 12, true);
+    y -= 16;
+
+    // Answers table
     const { cols, rows } = getGridDef();
     const colLabels = isCpmLike() ? ["A", "AB", "B"] : ["A", "B", "C", "D", "E"];
-    const maxCols = Math.min(cols, colLabels.length);
-    const maxRows = rows || 0;
+    const tableCols = Math.min(cols, colLabels.length);
+    const tableRows = rows || 0;
 
-    if (!maxRows || !maxCols) return `<div class="small">-</div>`;
+    const tableWidth = width - margin * 2;
+    const rowHeaderW = 32;
+    const cellW = (tableWidth - rowHeaderW) / Math.max(1, tableCols);
+    const headerH = 18;
+    const cellH = 18;
 
-    let thead = `<tr><th></th>`;
-    for (let c = 0; c < maxCols; c++) thead += `<th>${escapeHtml(colLabels[c])}</th>`;
-    thead += `</tr>`;
+    const lineColor = rgb(0.25, 0.37, 0.30);
+    const fillHeader = rgb(0.94, 0.95, 0.92);
 
-    let tbody = "";
-    for (let r = 0; r < maxRows; r++) {
-      tbody += `<tr><th>${r + 1}</th>`;
-      for (let c = 0; c < maxCols; c++) {
+    // Header background
+    page.drawRectangle({ x: margin, y: y - headerH, width: tableWidth, height: headerH, color: fillHeader });
+
+    // Header labels
+    page.drawText("", { x: margin + 8, y: y - 13, size: 10, font: fontBold, color: rgb(0.12, 0.16, 0.2) });
+    for (let c = 0; c < tableCols; c++) {
+      const cx = margin + rowHeaderW + c * cellW;
+      page.drawText(colLabels[c], {
+        x: cx + cellW / 2 - (colLabels[c].length * 3),
+        y: y - 13,
+        size: 10,
+        font: fontBold,
+        color: rgb(0.12, 0.16, 0.2)
+      });
+    }
+
+    // Grid lines + cells
+    const tableTopY = y;
+    const tableH = headerH + tableRows * cellH;
+
+    // Outer border
+    page.drawRectangle({ x: margin, y: tableTopY - tableH, width: tableWidth, height: tableH, borderColor: lineColor, borderWidth: 1 });
+
+    // Vertical lines
+    page.drawLine({ start: { x: margin + rowHeaderW, y: tableTopY }, end: { x: margin + rowHeaderW, y: tableTopY - tableH }, color: lineColor, thickness: 1 });
+    for (let c = 1; c < tableCols; c++) {
+      const x = margin + rowHeaderW + c * cellW;
+      page.drawLine({ start: { x, y: tableTopY }, end: { x, y: tableTopY - tableH }, color: lineColor, thickness: 0.5 });
+    }
+
+    // Horizontal lines
+    page.drawLine({ start: { x: margin, y: tableTopY - headerH }, end: { x: margin + tableWidth, y: tableTopY - headerH }, color: lineColor, thickness: 1 });
+    for (let r = 1; r <= tableRows; r++) {
+      const yy = tableTopY - headerH - r * cellH;
+      page.drawLine({ start: { x: margin, y: yy }, end: { x: margin + tableWidth, y: yy }, color: lineColor, thickness: 0.5 });
+    }
+
+    // Row headers + values
+    for (let r = 0; r < tableRows; r++) {
+      const yy = tableTopY - headerH - r * cellH - 13;
+      page.drawText(String(r + 1), { x: margin + 10, y: yy, size: 10, font: fontBold, color: rgb(0.12, 0.16, 0.2) });
+      for (let c = 0; c < tableCols; c++) {
         const domIdx = r * cols + c;
         const v = state.answers?.[domIdx];
-        tbody += `<td>${v === "" || v == null ? "" : escapeHtml(String(v))}</td>`;
+        if (v === "" || v == null) continue;
+        const cx = margin + rowHeaderW + c * cellW;
+        page.drawText(String(v), {
+          x: cx + cellW / 2 - 3,
+          y: yy,
+          size: 10,
+          font,
+          color: rgb(0.12, 0.16, 0.2)
+        });
       }
-      tbody += `</tr>`;
     }
 
-    return `<table><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
-  }
+    y = tableTopY - tableH - 22;
 
-  function printHtmlToPdf(html, filenameBase) {
-    const iframe = document.createElement("iframe");
-    iframe.style.position = "fixed";
-    iframe.style.right = "0";
-    iframe.style.bottom = "0";
-    iframe.style.width = "0";
-    iframe.style.height = "0";
-    iframe.style.border = "0";
-    iframe.setAttribute("aria-hidden", "true");
-    document.body.appendChild(iframe);
+    drawKeyValue("Raw Score", rawScore);
+    drawKeyValue("Interpretation", interpretation);
 
-    const doc = iframe.contentDocument || iframe.contentWindow?.document;
-    if (!doc) {
-      window.print();
-      return;
-    }
+    const pdfBytes = await pdfDoc.save();
+    const blob = new Blob([pdfBytes], { type: "application/pdf" });
 
-    doc.open();
-    doc.write(html);
-    doc.close();
+    const safeName = (name || "report").replace(/[\\\\/:*?\"<>|]+/g, "_").slice(0, 60);
+    const filename = `Raven_Report_${safeName}.pdf`;
 
-    // Some mobile browsers need a bit more time.
-    setTimeout(() => {
+    // Prefer native share with file (WhatsApp-compatible on many Android browsers).
+    const file = new File([blob], filename, { type: "application/pdf" });
+    if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
       try {
-        iframe.contentWindow?.focus();
-        // The browser print dialog allows "Save as PDF".
-        iframe.contentWindow?.print();
-      } finally {
-        setTimeout(() => iframe.remove(), 1000);
+        await navigator.share({ title, files: [file] });
+        return;
+      } catch {
+        // fall through to download
       }
-    }, 250);
+    }
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
   }
 
   function escapeHtml(value) {
