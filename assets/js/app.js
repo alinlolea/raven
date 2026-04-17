@@ -1209,78 +1209,124 @@
   }
 
   function exportPdf() {
-    // Minimal export UI: open a print view; user can "Save as PDF" in the dialog.
+    // Generate a professional print layout; user can save as PDF.
     const testLabel = TEST_DEFINITIONS[state.testType].label;
-    const filled = allFilled();
-    const answersText =
-      filled && state.answers.length
-        ? state.answers.map((v, idx) => `${idx + 1}:${v}`).join(" ")
-        : "(answers not complete)";
+    const clientName = dom.clientName.value.trim() || "-";
+    const birthDate = formatBirthDateForExport();
+    const age = formatAgeForExport();
+    const rawScore = dom.rawScore.textContent || "-";
+    const interpretation = getInterpretationPlainText() || "-";
 
-    const payload = {
-      clientName: dom.clientName.value.trim() || "(not provided)",
-      birthDate: formatBirthDateForExport(),
-      age: formatAgeForExport(),
-      testType: testLabel,
-      rawScore: dom.rawScore.textContent,
-      interpretation: getInterpretationPlainText(),
-      answersText
-    };
+    const title = "Raport de evaluare Raven";
+    const answersTableHtml = buildAnswersTableHtml();
 
-    try {
-      const w = window.open("", "_blank", "noopener,noreferrer,width=720,height=900");
-      if (!w) {
-        window.print();
-        return;
+    const html = `<!doctype html>
+      <html lang="ro">
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <title>${escapeHtml(title)}</title>
+          <style>
+            @page { margin: 18mm; }
+            body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; color: #1F2933; }
+            .h1 { font-size: 18px; font-weight: 800; margin: 0 0 14px; }
+            .meta { display: grid; grid-template-columns: 140px 1fr; gap: 6px 14px; margin-bottom: 14px; }
+            .k { font-weight: 700; opacity: 0.85; }
+            .v { white-space: pre-wrap; }
+            .row2 { display: flex; gap: 18px; }
+            .section { margin-top: 14px; }
+            .sectionTitle { font-size: 13.5px; font-weight: 800; margin: 0 0 8px; opacity: 0.92; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { border: 1px solid rgba(63, 94, 77, 0.25); padding: 6px 8px; font-size: 12.5px; }
+            th { background: rgba(79, 111, 95, 0.08); text-align: center; font-weight: 800; }
+            td { text-align: center; height: 22px; }
+            .left { text-align: left; }
+            .small { font-size: 12px; opacity: 0.85; }
+          </style>
+        </head>
+        <body>
+          <div class="h1">${escapeHtml(title)}</div>
+
+          <div class="meta">
+            <div class="k">Name</div><div class="v">${escapeHtml(clientName)}</div>
+            <div class="k">DOB</div><div class="v">${escapeHtml(birthDate)} <span class="small">[${escapeHtml(age)}]</span></div>
+            <div class="k">Test Type</div><div class="v">${escapeHtml(testLabel)}</div>
+          </div>
+
+          <div class="section">
+            <div class="sectionTitle">Answers</div>
+            ${answersTableHtml}
+          </div>
+
+          <div class="section">
+            <div class="meta">
+              <div class="k">Raw Score</div><div class="v">${escapeHtml(rawScore)}</div>
+              <div class="k">Interpretation</div><div class="v">${escapeHtml(interpretation)}</div>
+            </div>
+          </div>
+        </body>
+      </html>`;
+
+    printHtmlToPdf(html, `${title} - ${clientName}`.trim());
+  }
+
+  function buildAnswersTableHtml() {
+    const { cols, rows } = getGridDef();
+    const colLabels = isCpmLike() ? ["A", "AB", "B"] : ["A", "B", "C", "D", "E"];
+    const maxCols = Math.min(cols, colLabels.length);
+    const maxRows = rows || 0;
+
+    if (!maxRows || !maxCols) return `<div class="small">-</div>`;
+
+    let thead = `<tr><th></th>`;
+    for (let c = 0; c < maxCols; c++) thead += `<th>${escapeHtml(colLabels[c])}</th>`;
+    thead += `</tr>`;
+
+    let tbody = "";
+    for (let r = 0; r < maxRows; r++) {
+      tbody += `<tr><th>${r + 1}</th>`;
+      for (let c = 0; c < maxCols; c++) {
+        const domIdx = r * cols + c;
+        const v = state.answers?.[domIdx];
+        tbody += `<td>${v === "" || v == null ? "" : escapeHtml(String(v))}</td>`;
       }
-
-      w.document.write(`<!doctype html>
-        <html lang="en">
-          <head>
-            <meta charset="utf-8" />
-            <meta name="viewport" content="width=device-width, initial-scale=1" />
-            <title>Digital Raven - Export</title>
-            <style>
-              body{ font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; padding: 24px; color: #1F2933; }
-              .header{ margin-bottom: 18px; }
-              .card{ border: 1px solid rgba(63, 94, 77, .25); border-radius: 16px; padding: 16px; background: rgba(79, 111, 95, .06); }
-              .kv{ display:grid; grid-template-columns: 160px 1fr; gap: 8px 14px; }
-              .k{ font-weight: 700; opacity: .8; }
-              .v{ white-space: pre-wrap; }
-              .answers{ margin-top: 14px; }
-              .muted{ opacity: .75; }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h2 style="margin:0 0 6px;">Digital Raven</h2>
-              <div class="muted">Psychological test scoring export</div>
-            </div>
-            <div class="card">
-              <div class="kv">
-                <div class="k">Client</div><div class="v">${escapeHtml(payload.clientName)}</div>
-                <div class="k">Data nașterii</div><div class="v">${escapeHtml(payload.birthDate)}</div>
-                <div class="k">Vârstă</div><div class="v">${escapeHtml(payload.age)}</div>
-                <div class="k">Test type</div><div class="v">${escapeHtml(payload.testType)}</div>
-                <div class="k">Raw score</div><div class="v">${escapeHtml(payload.rawScore)}</div>
-                <div class="k">Interpretation</div><div class="v">${escapeHtml(payload.interpretation)}</div>
-              </div>
-              <div class="answers">
-                <div class="k" style="margin-bottom:8px;">Answers</div>
-                <div class="v">${escapeHtml(payload.answersText)}</div>
-              </div>
-            </div>
-            <script>
-              setTimeout(() => { window.focus(); window.print(); }, 120);
-            <\/script>
-          </body>
-        </html>`);
-
-      w.document.close();
-      return;
-    } catch {
-      window.print();
+      tbody += `</tr>`;
     }
+
+    return `<table><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
+  }
+
+  function printHtmlToPdf(html, filenameBase) {
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    iframe.setAttribute("aria-hidden", "true");
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) {
+      window.print();
+      return;
+    }
+
+    doc.open();
+    doc.write(html);
+    doc.close();
+
+    // Some mobile browsers need a bit more time.
+    setTimeout(() => {
+      try {
+        iframe.contentWindow?.focus();
+        // The browser print dialog allows "Save as PDF".
+        iframe.contentWindow?.print();
+      } finally {
+        setTimeout(() => iframe.remove(), 1000);
+      }
+    }, 250);
   }
 
   function escapeHtml(value) {
