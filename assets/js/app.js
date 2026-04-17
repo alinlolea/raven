@@ -1281,8 +1281,6 @@
 
       const lineColor = rgb(0.25, 0.37, 0.30);
       const fillHeader = rgb(0.94, 0.95, 0.92);
-      const fillCorrect = rgb(0.86, 0.95, 0.90);
-      const fillIncorrect = rgb(0.97, 0.88, 0.88);
 
       // Header background
       page.drawRectangle({ x: margin, y: y - headerH, width: tableWidth, height: headerH, color: fillHeader });
@@ -1331,17 +1329,6 @@
           if (v === "" || v == null) continue;
           const cx = margin + rowHeaderW + c * cellW;
 
-          // Color fill based on correctness (same expected-answer logic as UI).
-          const expected = getExpectedAnswerForCurrentTest(domIdx);
-          const isCorrect = expected !== null && expected !== undefined && Number(v) === Number(expected);
-          page.drawRectangle({
-            x: cx,
-            y: tableTopY - headerH - (r + 1) * cellH,
-            width: cellW,
-            height: cellH,
-            color: isCorrect ? fillCorrect : fillIncorrect
-          });
-
           page.drawText(String(v), {
             x: cx + cellW / 2 - 3,
             y: yy,
@@ -1356,35 +1343,6 @@
 
       drawKeyValue("Raw Score", rawScore);
       drawKeyValue("Interpretation", interpretation);
-
-      // Discrepante line (SPM only) with color coding.
-      if (isDiscrepanteSupported()) {
-        const discParts = getDiscrepancyPartsForPdf(Number(dom.rawScore.textContent || 0));
-        if (discParts) {
-          y -= 6;
-          drawText("Discrepante:", margin, 11, true);
-          let x = margin + 110;
-          const size = 11;
-          for (let i = 0; i < discParts.length; i++) {
-            const p = discParts[i];
-            const label = `${p.label}[${p.sign}${p.abs}]${i < discParts.length - 1 ? ", " : ""}`;
-            page.drawText(label, {
-              x,
-              y,
-              size,
-              font,
-              color: p.ok ? rgb(0.22, 0.55, 0.40) : rgb(0.70, 0.25, 0.25)
-            });
-            x += font.widthOfTextAtSize(label, size);
-            // Wrap if needed.
-            if (x > width - margin - 40) {
-              x = margin + 110;
-              y -= 16;
-            }
-          }
-          y -= 18;
-        }
-      }
 
       const pdfBytes = await pdfDoc.save();
       const blob = new Blob([pdfBytes], { type: "application/pdf" });
@@ -1418,24 +1376,6 @@
       const msg = e instanceof Error ? e.message : String(e);
       showToast(`PDF export failed: ${msg}`);
     }
-  }
-
-  function getDiscrepancyPartsForPdf(totalRawScore) {
-    if (!window.Discrepante || typeof window.Discrepante.getExpected !== "function") return null;
-    const total = Number(totalRawScore);
-    const expected = window.Discrepante.getExpected(total) || window.Discrepante.getExpected(10);
-    if (!expected) return null;
-    const actual = getSpmUserScaleCorrectCounts();
-    const letters = getSpmScaleLetters();
-    return letters.map((L) => {
-      const delta = (actual[L] ?? 0) - (expected[L] ?? 0);
-      return {
-        label: L,
-        ok: Math.abs(delta) <= 2,
-        sign: delta > 0 ? "+" : delta < 0 ? "-" : "",
-        abs: Math.abs(delta)
-      };
-    });
   }
 
   function toPdfSafeText(value) {
