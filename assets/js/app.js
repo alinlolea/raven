@@ -1372,7 +1372,8 @@
       showToast("PDF downloaded.");
     } catch (e) {
       console.error("[PDF] export failed:", e);
-      showToast("PDF export failed. Check console for details.");
+      const msg = e instanceof Error ? e.message : String(e);
+      showToast(`PDF export failed: ${msg}`);
     }
   }
 
