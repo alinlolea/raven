@@ -758,6 +758,18 @@
           return { rawScore, spmPlus, ageIndex, result, blockReason };
         }
 
+        // Baseline output even for raw score 0.
+        if (rawScore === 0) {
+          const low = getLowestCpmResultForAgeIndex(ageIndex);
+          if (low) {
+            blockReason = null;
+            result = low;
+            const { line1, line2 } = buildInterpretationLines(low);
+            setInterpretationUI(line1, line2, "");
+            return { rawScore, spmPlus, ageIndex, result, blockReason };
+          }
+        }
+
         if (typeof window.RavenCNorms.getResult !== "function") {
           blockReason = "cpm_getResult_missing";
           setInterpretationUI(dash, "");
@@ -859,6 +871,19 @@
         setInterpretationUI("Vârsta nu se încadrează în normele CSV.", "");
         result = null;
         return { rawScore, spmPlus, ageIndex, result, blockReason };
+      }
+
+      // Baseline output even for raw score 0 (SPM-C / SPM-P / SPM+).
+      if (rawScore === 0) {
+        const low = getLowestSpmResultForAgeIndex(ageIndex);
+        if (low) {
+          blockReason = null;
+          result = low;
+          const { line1, line2 } = buildInterpretationLines(low);
+          const disc = isDiscrepanteSupported() ? buildDiscrepanteHtml(rawScore) : "";
+          setInterpretationUI(line1, line2, disc);
+          return { rawScore, spmPlus, ageIndex, result, blockReason };
+        }
       }
 
       if (typeof window.getResult !== "function") {
@@ -1382,6 +1407,33 @@
     if (!("serviceWorker" in navigator)) return;
     navigator.serviceWorker
       .register("./service-worker.js")
+      .then((reg) => {
+        // Ask the browser to check for an updated SW on load.
+        try { reg.update(); } catch {}
+
+        // If a new SW is waiting, activate it immediately.
+        if (reg.waiting) {
+          try { reg.waiting.postMessage({ type: "SKIP_WAITING" }); } catch {}
+        }
+
+        reg.addEventListener("updatefound", () => {
+          const sw = reg.installing;
+          if (!sw) return;
+          sw.addEventListener("statechange", () => {
+            if (sw.state === "installed" && navigator.serviceWorker.controller) {
+              // New version installed; activate then reload once.
+              try { sw.postMessage({ type: "SKIP_WAITING" }); } catch {}
+            }
+          });
+        });
+
+        let reloaded = false;
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          if (reloaded) return;
+          reloaded = true;
+          window.location.reload();
+        });
+      })
       .catch(() => {
         // If registration fails, the UI still works as a web app.
       });
