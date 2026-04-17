@@ -1209,163 +1209,171 @@
   }
 
   async function exportPdf() {
-    const pdfLib = /** @type {any} */ (window).PDFLib;
-    if (!pdfLib) {
-      showToast("PDF generator not loaded yet. Try again in a second.");
-      return;
-    }
+    try {
+      showToast("Generating PDF…");
+      const pdfLib = /** @type {any} */ (window).PDFLib;
+      if (!pdfLib) {
+        showToast("PDF generator not available. Reload the app and try again.");
+        return;
+      }
 
-    const title = "Raport de evaluare Raven";
-    const testLabel = TEST_DEFINITIONS[state.testType].label;
-    const name = dom.clientName.value.trim() || "-";
-    const dob = formatBirthDateForExport();
-    const age = formatAgeForExport();
-    const rawScore = dom.rawScore.textContent || "-";
-    const interpretation = getInterpretationPlainText() || "-";
+      const title = "Raport de evaluare Raven";
+      const testLabel = TEST_DEFINITIONS[state.testType].label;
+      const name = dom.clientName.value.trim() || "-";
+      const dob = formatBirthDateForExport();
+      const age = formatAgeForExport();
+      const rawScore = dom.rawScore.textContent || "-";
+      const interpretation = getInterpretationPlainText() || "-";
 
-    const { PDFDocument, StandardFonts, rgb } = pdfLib;
-    const pdfDoc = await PDFDocument.create();
-    const page = pdfDoc.addPage([595.28, 841.89]); // A4 portrait in points
-    const { width, height } = page.getSize();
+      const { PDFDocument, StandardFonts, rgb } = pdfLib;
+      const pdfDoc = await PDFDocument.create();
+      const page = pdfDoc.addPage([595.28, 841.89]); // A4 portrait in points
+      const { width, height } = page.getSize();
 
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-    const margin = 48;
-    let y = height - margin;
+      const margin = 48;
+      let y = height - margin;
 
-    function drawText(text, x, size, isBold = false) {
-      page.drawText(String(text ?? ""), {
-        x,
-        y,
-        size,
-        font: isBold ? fontBold : font,
-        color: rgb(0.12, 0.16, 0.2)
-      });
-    }
-
-    function drawKeyValue(label, value) {
-      const labelX = margin;
-      const valueX = margin + 160;
-      drawText(label, labelX, 11, true);
-      drawText(value, valueX, 11, false);
-      y -= 18;
-    }
-
-    // Title
-    drawText(title, margin, 16, true);
-    y -= 26;
-
-    drawKeyValue("Name", name);
-    drawKeyValue("DOB", `${dob}  [${age}]`);
-    drawKeyValue("Test Type", testLabel);
-    y -= 8;
-
-    // Answers section title
-    drawText("Answers", margin, 12, true);
-    y -= 16;
-
-    // Answers table
-    const { cols, rows } = getGridDef();
-    const colLabels = isCpmLike() ? ["A", "AB", "B"] : ["A", "B", "C", "D", "E"];
-    const tableCols = Math.min(cols, colLabels.length);
-    const tableRows = rows || 0;
-
-    const tableWidth = width - margin * 2;
-    const rowHeaderW = 32;
-    const cellW = (tableWidth - rowHeaderW) / Math.max(1, tableCols);
-    const headerH = 18;
-    const cellH = 18;
-
-    const lineColor = rgb(0.25, 0.37, 0.30);
-    const fillHeader = rgb(0.94, 0.95, 0.92);
-
-    // Header background
-    page.drawRectangle({ x: margin, y: y - headerH, width: tableWidth, height: headerH, color: fillHeader });
-
-    // Header labels
-    page.drawText("", { x: margin + 8, y: y - 13, size: 10, font: fontBold, color: rgb(0.12, 0.16, 0.2) });
-    for (let c = 0; c < tableCols; c++) {
-      const cx = margin + rowHeaderW + c * cellW;
-      page.drawText(colLabels[c], {
-        x: cx + cellW / 2 - (colLabels[c].length * 3),
-        y: y - 13,
-        size: 10,
-        font: fontBold,
-        color: rgb(0.12, 0.16, 0.2)
-      });
-    }
-
-    // Grid lines + cells
-    const tableTopY = y;
-    const tableH = headerH + tableRows * cellH;
-
-    // Outer border
-    page.drawRectangle({ x: margin, y: tableTopY - tableH, width: tableWidth, height: tableH, borderColor: lineColor, borderWidth: 1 });
-
-    // Vertical lines
-    page.drawLine({ start: { x: margin + rowHeaderW, y: tableTopY }, end: { x: margin + rowHeaderW, y: tableTopY - tableH }, color: lineColor, thickness: 1 });
-    for (let c = 1; c < tableCols; c++) {
-      const x = margin + rowHeaderW + c * cellW;
-      page.drawLine({ start: { x, y: tableTopY }, end: { x, y: tableTopY - tableH }, color: lineColor, thickness: 0.5 });
-    }
-
-    // Horizontal lines
-    page.drawLine({ start: { x: margin, y: tableTopY - headerH }, end: { x: margin + tableWidth, y: tableTopY - headerH }, color: lineColor, thickness: 1 });
-    for (let r = 1; r <= tableRows; r++) {
-      const yy = tableTopY - headerH - r * cellH;
-      page.drawLine({ start: { x: margin, y: yy }, end: { x: margin + tableWidth, y: yy }, color: lineColor, thickness: 0.5 });
-    }
-
-    // Row headers + values
-    for (let r = 0; r < tableRows; r++) {
-      const yy = tableTopY - headerH - r * cellH - 13;
-      page.drawText(String(r + 1), { x: margin + 10, y: yy, size: 10, font: fontBold, color: rgb(0.12, 0.16, 0.2) });
-      for (let c = 0; c < tableCols; c++) {
-        const domIdx = r * cols + c;
-        const v = state.answers?.[domIdx];
-        if (v === "" || v == null) continue;
-        const cx = margin + rowHeaderW + c * cellW;
-        page.drawText(String(v), {
-          x: cx + cellW / 2 - 3,
-          y: yy,
-          size: 10,
-          font,
+      function drawText(text, x, size, isBold = false) {
+        page.drawText(String(text ?? ""), {
+          x,
+          y,
+          size,
+          font: isBold ? fontBold : font,
           color: rgb(0.12, 0.16, 0.2)
         });
       }
-    }
 
-    y = tableTopY - tableH - 22;
-
-    drawKeyValue("Raw Score", rawScore);
-    drawKeyValue("Interpretation", interpretation);
-
-    const pdfBytes = await pdfDoc.save();
-    const blob = new Blob([pdfBytes], { type: "application/pdf" });
-
-    const safeName = (name || "report").replace(/[\\\\/:*?\"<>|]+/g, "_").slice(0, 60);
-    const filename = `Raven_Report_${safeName}.pdf`;
-
-    // Prefer native share with file (WhatsApp-compatible on many Android browsers).
-    const file = new File([blob], filename, { type: "application/pdf" });
-    if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({ title, files: [file] });
-        return;
-      } catch {
-        // fall through to download
+      function drawKeyValue(label, value) {
+        const labelX = margin;
+        const valueX = margin + 160;
+        drawText(label, labelX, 11, true);
+        drawText(value, valueX, 11, false);
+        y -= 18;
       }
-    }
 
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
+      // Title
+      drawText(title, margin, 16, true);
+      y -= 26;
+
+      drawKeyValue("Name", name);
+      drawKeyValue("DOB", `${dob}  [${age}]`);
+      drawKeyValue("Test Type", testLabel);
+      y -= 8;
+
+      // Answers section title
+      drawText("Answers", margin, 12, true);
+      y -= 16;
+
+      // Answers table
+      const { cols, rows } = getGridDef();
+      const colLabels = isCpmLike() ? ["A", "AB", "B"] : ["A", "B", "C", "D", "E"];
+      const tableCols = Math.min(cols, colLabels.length);
+      const tableRows = rows || 0;
+
+      const tableWidth = width - margin * 2;
+      const rowHeaderW = 32;
+      const cellW = (tableWidth - rowHeaderW) / Math.max(1, tableCols);
+      const headerH = 18;
+      const cellH = 18;
+
+      const lineColor = rgb(0.25, 0.37, 0.30);
+      const fillHeader = rgb(0.94, 0.95, 0.92);
+
+      // Header background
+      page.drawRectangle({ x: margin, y: y - headerH, width: tableWidth, height: headerH, color: fillHeader });
+
+      // Header labels
+      page.drawText("", { x: margin + 8, y: y - 13, size: 10, font: fontBold, color: rgb(0.12, 0.16, 0.2) });
+      for (let c = 0; c < tableCols; c++) {
+        const cx = margin + rowHeaderW + c * cellW;
+        page.drawText(colLabels[c], {
+          x: cx + cellW / 2 - (colLabels[c].length * 3),
+          y: y - 13,
+          size: 10,
+          font: fontBold,
+          color: rgb(0.12, 0.16, 0.2)
+        });
+      }
+
+      // Grid lines + cells
+      const tableTopY = y;
+      const tableH = headerH + tableRows * cellH;
+
+      // Outer border
+      page.drawRectangle({ x: margin, y: tableTopY - tableH, width: tableWidth, height: tableH, borderColor: lineColor, borderWidth: 1 });
+
+      // Vertical lines
+      page.drawLine({ start: { x: margin + rowHeaderW, y: tableTopY }, end: { x: margin + rowHeaderW, y: tableTopY - tableH }, color: lineColor, thickness: 1 });
+      for (let c = 1; c < tableCols; c++) {
+        const x = margin + rowHeaderW + c * cellW;
+        page.drawLine({ start: { x, y: tableTopY }, end: { x, y: tableTopY - tableH }, color: lineColor, thickness: 0.5 });
+      }
+
+      // Horizontal lines
+      page.drawLine({ start: { x: margin, y: tableTopY - headerH }, end: { x: margin + tableWidth, y: tableTopY - headerH }, color: lineColor, thickness: 1 });
+      for (let r = 1; r <= tableRows; r++) {
+        const yy = tableTopY - headerH - r * cellH;
+        page.drawLine({ start: { x: margin, y: yy }, end: { x: margin + tableWidth, y: yy }, color: lineColor, thickness: 0.5 });
+      }
+
+      // Row headers + values
+      for (let r = 0; r < tableRows; r++) {
+        const yy = tableTopY - headerH - r * cellH - 13;
+        page.drawText(String(r + 1), { x: margin + 10, y: yy, size: 10, font: fontBold, color: rgb(0.12, 0.16, 0.2) });
+        for (let c = 0; c < tableCols; c++) {
+          const domIdx = r * cols + c;
+          const v = state.answers?.[domIdx];
+          if (v === "" || v == null) continue;
+          const cx = margin + rowHeaderW + c * cellW;
+          page.drawText(String(v), {
+            x: cx + cellW / 2 - 3,
+            y: yy,
+            size: 10,
+            font,
+            color: rgb(0.12, 0.16, 0.2)
+          });
+        }
+      }
+
+      y = tableTopY - tableH - 22;
+
+      drawKeyValue("Raw Score", rawScore);
+      drawKeyValue("Interpretation", interpretation);
+
+      const pdfBytes = await pdfDoc.save();
+      const blob = new Blob([pdfBytes], { type: "application/pdf" });
+
+      const safeName = (name || "report").replace(/[\\\\/:*?\"<>|]+/g, "_").slice(0, 60);
+      const filename = `Raven_Report_${safeName}.pdf`;
+
+      // Prefer native share with file (WhatsApp-compatible on many Android browsers).
+      const file = new File([blob], filename, { type: "application/pdf" });
+      if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ title, files: [file] });
+          showToast("PDF ready.");
+          return;
+        } catch {
+          // fall through to download
+        }
+      }
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      showToast("PDF downloaded.");
+    } catch (e) {
+      console.error("[PDF] export failed:", e);
+      showToast("PDF export failed. Check console for details.");
+    }
   }
 
   function escapeHtml(value) {
