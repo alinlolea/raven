@@ -804,13 +804,33 @@
         if (spmPlus === null || spmPlus === undefined) {
           if (ravenNormsStatus === "pending") {
             blockReason = "norms_pending_or_raw_out_of_table";
-            setInterpretationUI("Se încarcă normele…", "");
+            setInterpretationUI("Se încarcă normele…", "", "");
           } else if (ravenNormsStatus === "failed") {
             blockReason = "norms_csv_failed";
-            setInterpretationUI("Norme indisponibile (CSV).", "");
+            setInterpretationUI("Norme indisponibile (CSV).", "", "");
           } else {
+            // Low raw scores (e.g. 0) may not map to an SPM+ conversion row.
+            // Show the lowest available CSV output for the selected age band.
+            const norms = window.RavenNorms;
+            const idx =
+              norms && typeof norms.getAgeIndexForTotalMonths === "function"
+                ? norms.getAgeIndexForTotalMonths(totalMonths)
+                : -1;
+            if (idx >= 0) {
+              const low = getLowestSpmResultForAgeIndex(idx);
+              if (low) {
+                blockReason = null;
+                ageIndex = idx;
+                result = low;
+                const { line1, line2 } = buildInterpretationLines(low);
+                const disc = isDiscrepanteSupported() ? buildDiscrepanteHtml(rawScore) : "";
+                setInterpretationUI(line1, line2, disc);
+                return { rawScore, spmPlus, ageIndex, result, blockReason };
+              }
+            }
+
             blockReason = "getSPMPlus_null";
-            setInterpretationUI(dash, "");
+            setInterpretationUI(dash, "", "");
           }
           ageIndex = null;
           result = null;
