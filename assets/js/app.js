@@ -234,6 +234,34 @@
     return { line1, line2 };
   }
 
+  function getLowestSpmResultForAgeIndex(ageIndex) {
+    const t =
+      window.RavenNorms && typeof window.RavenNorms._getTables === "function"
+        ? window.RavenNorms._getTables()
+        : null;
+    const idx = Number(ageIndex);
+    if (!t || !Array.isArray(t.rows) || !t.rows.length) return null;
+    if (!Number.isFinite(idx) || idx < 0) return null;
+    const row0 = t.rows[0];
+    const pair = row0?.agePairs?.[idx];
+    if (!pair) return null;
+    return { percentile: pair.percentile, iq: pair.iq, ageLabel: t.ageGroups?.[idx]?.label };
+  }
+
+  function getLowestCpmResultForAgeIndex(ageIndex) {
+    const t =
+      window.RavenCNorms && typeof window.RavenCNorms._getTables === "function"
+        ? window.RavenCNorms._getTables()
+        : null;
+    const idx = Number(ageIndex);
+    if (!t || !Array.isArray(t.rows) || !t.rows.length) return null;
+    if (!Number.isFinite(idx) || idx < 0) return null;
+    const row0 = t.rows[0];
+    const pair = row0?.agePairs?.[idx];
+    if (!pair) return null;
+    return { percentile: pair.percentile, iq: pair.iq, ageLabel: t.ageGroups?.[idx]?.label };
+  }
+
   const BIRTH_EMPTY = "_";
 
   /** @param {string} value */
@@ -694,7 +722,7 @@
       dom.rawScore.textContent = String(rawScore);
 
       const totalMonths = getUserTotalMonthsOrNull();
-      const readyForNorms = totalMonths !== null && rawScore >= 1;
+      const readyForNorms = totalMonths !== null && rawScore >= 0;
 
       if (!readyForNorms) {
         blockReason = rawScore < 1 ? "need_at_least_one_correct" : "need_valid_birth_date_or_age";
@@ -727,11 +755,27 @@
           return { rawScore, spmPlus, ageIndex, result, blockReason };
         }
 
-        result = window.RavenCNorms.getResult(rawScore, ageIndex);
+      result = window.RavenCNorms.getResult(rawScore, ageIndex);
         if (!result) {
-          setInterpretationUI(ravenCNormsStatus === "pending" ? "Se încarcă normele…" : dash, "");
+        if (ravenCNormsStatus === "pending") {
+          setInterpretationUI("Se încarcă normele…", "", "");
+          blockReason = "cpm_getResult_pending";
+          return { rawScore, spmPlus, ageIndex, result, blockReason };
+        }
+
+        const low = getLowestCpmResultForAgeIndex(ageIndex);
+        if (!low) {
+          setInterpretationUI(dash, "", "");
           blockReason = "cpm_getResult_null";
           return { rawScore, spmPlus, ageIndex, result, blockReason };
+        }
+
+        blockReason = null;
+        {
+          const { line1, line2 } = buildInterpretationLines(low);
+          setInterpretationUI(line1, line2, "");
+        }
+        return { rawScore, spmPlus, ageIndex, result, blockReason };
         }
 
         blockReason = null;
@@ -796,8 +840,25 @@
 
       result = window.getResult(spmPlus, ageIndex);
       if (!result) {
-        blockReason = "getResult_null";
-        setInterpretationUI(dash, "");
+        if (ravenNormsStatus === "pending") {
+          blockReason = "norms_pending";
+          setInterpretationUI("Se încarcă normele…", "", "");
+          return { rawScore, spmPlus, ageIndex, result, blockReason };
+        }
+
+        const low = getLowestSpmResultForAgeIndex(ageIndex);
+        if (!low) {
+          blockReason = "getResult_null";
+          setInterpretationUI(dash, "", "");
+          return { rawScore, spmPlus, ageIndex, result, blockReason };
+        }
+
+        blockReason = null;
+        {
+          const { line1, line2 } = buildInterpretationLines(low);
+          const disc = isDiscrepanteSupported() ? buildDiscrepanteHtml(rawScore) : "";
+          setInterpretationUI(line1, line2, disc);
+        }
         return { rawScore, spmPlus, ageIndex, result, blockReason };
       }
 
