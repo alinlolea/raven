@@ -1237,7 +1237,7 @@
       let y = height - margin;
 
       function drawText(text, x, size, isBold = false) {
-        page.drawText(String(text ?? ""), {
+        page.drawText(toPdfSafeText(text), {
           x,
           y,
           size,
@@ -1346,7 +1346,7 @@
       const pdfBytes = await pdfDoc.save();
       const blob = new Blob([pdfBytes], { type: "application/pdf" });
 
-      const safeName = (name || "report").replace(/[\\\\/:*?\"<>|]+/g, "_").slice(0, 60);
+      const safeName = toPdfSafeText(name || "report").replace(/[\\\\/:*?\"<>|]+/g, "_").slice(0, 60);
       const filename = `Raven_Report_${safeName}.pdf`;
 
       // Prefer native share with file (WhatsApp-compatible on many Android browsers).
@@ -1375,6 +1375,21 @@
       const msg = e instanceof Error ? e.message : String(e);
       showToast(`PDF export failed: ${msg}`);
     }
+  }
+
+  function toPdfSafeText(value) {
+    // pdf-lib StandardFonts (WinAnsi) can't encode Romanian diacritics.
+    // We strip diacritics and keep a plain ASCII representation.
+    const s = String(value ?? "");
+    const noMarks =
+      typeof s.normalize === "function"
+        ? s
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+        : s;
+
+    // Extra safety: remove any remaining non-ASCII characters.
+    return noMarks.replace(/[^\x00-\x7F]/g, "");
   }
 
   function escapeHtml(value) {
