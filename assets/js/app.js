@@ -60,6 +60,8 @@
   let ravenNormsStatus = "pending";
   /** @type {"pending"|"ok"|"failed"} */
   let ravenCNormsStatus = "pending";
+  /** @type {"pending"|"ok"|"failed"} */
+  let discrepanteStatus = "pending";
 
   function getSpmCorrectFlatFor(testType) {
     // Flat arrays are column-major: A1..A12, B1..B12, ... (matches CSV expectations).
@@ -139,6 +141,7 @@
     rawScore: document.getElementById("raw-score"),
     interpretationLine1: document.getElementById("interpretation-line1"),
     interpretationLine2: document.getElementById("interpretation-line2"),
+    interpretationLine3: document.getElementById("interpretation-line3"),
     exportPdfBtn: document.getElementById("exportPdfBtn"),
     shareBtn: document.getElementById("shareBtn"),
     toast: document.getElementById("toast"),
@@ -146,7 +149,7 @@
     resultSection: document.getElementById("resultSection")
   };
 
-  function setInterpretationUI(line1, line2) {
+  function setInterpretationUI(line1, line2, line3Html) {
     if (dom.interpretationLine1) dom.interpretationLine1.textContent = line1;
     if (dom.interpretationLine2) {
       const t = line2 && String(line2).trim();
@@ -158,6 +161,17 @@
         dom.interpretationLine2.hidden = true;
       }
     }
+
+    if (dom.interpretationLine3) {
+      const t = line3Html && String(line3Html).trim();
+      if (t) {
+        dom.interpretationLine3.innerHTML = t;
+        dom.interpretationLine3.hidden = false;
+      } else {
+        dom.interpretationLine3.innerHTML = "";
+        dom.interpretationLine3.hidden = true;
+      }
+    }
   }
 
   function getInterpretationPlainText() {
@@ -166,7 +180,11 @@
       dom.interpretationLine2 && !dom.interpretationLine2.hidden
         ? dom.interpretationLine2.textContent.trim()
         : "";
-    return [a, b].filter(Boolean).join("\n");
+    const c =
+      dom.interpretationLine3 && !dom.interpretationLine3.hidden
+        ? dom.interpretationLine3.textContent.trim()
+        : "";
+    return [a, b, c].filter(Boolean).join("\n");
   }
 
   /**
@@ -786,7 +804,8 @@
       blockReason = null;
       {
         const { line1, line2 } = buildInterpretationLines(result);
-        setInterpretationUI(line1, line2);
+        const disc = isDiscrepanteSupported() ? buildDiscrepanteHtml(rawScore) : "";
+        setInterpretationUI(line1, line2, disc);
       }
       return { rawScore, spmPlus, ageIndex, result, blockReason };
     } catch (e) {
@@ -862,6 +881,50 @@
     const filled = state.answers[index] !== "";
     box.classList.toggle("is-filled", filled);
     updateAnswerValidation(index);
+  }
+
+  function isDiscrepanteSupported() {
+    return state.testType === "standard" || state.testType === "spm-p" || state.testType === "spm-plus";
+  }
+
+  function getSpmScaleLetters() {
+    return ["A", "B", "C", "D", "E"];
+  }
+
+  function getSpmUserScaleCorrectCounts() {
+    const { cols, rows } = getGridDef();
+    const letters = getSpmScaleLetters();
+    /** @type {{A:number,B:number,C:number,D:number,E:number}} */
+    const out = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+    if (cols !== 5 || rows !== 12) return out;
+
+    for (let domIdx = 0; domIdx < state.answers.length; domIdx++) {
+      const v = state.answers[domIdx];
+      if (v === "" || v === null || v === undefined) continue;
+      const expected = getExpectedAnswerForCurrentTest(domIdx);
+      if (expected === null || expected === undefined) continue;
+      if (Number(v) !== Number(expected)) continue;
+      const col = domIdx % cols;
+      const L = letters[col];
+      if (L) out[L] += 1;
+    }
+    return out;
+  }
+
+  function buildDiscrepanteHtml(totalRawScore) {
+    const fallback = "Discrepante: A[0], B[0], C[0], D[0], E[0]";
+    if (!window.Discrepante || typeof window.Discrepante.getExpected !== "function") return fallback;
+    const expected = window.Discrepante.getExpected(Number(totalRawScore));
+    if (!expected) return fallback;
+
+    const actual = getSpmUserScaleCorrectCounts();
+    const parts = getSpmScaleLetters().map((L) => {
+      const delta = (actual[L] ?? 0) - (expected[L] ?? 0);
+      const cls = Math.abs(delta) <= 2 ? "discOk" : "discBad";
+      const sign = delta > 0 ? `+${delta}` : String(delta);
+      return `${L}[<span class="${cls}">${sign}</span>]`;
+    });
+    return `Discrepante: ${parts.join(", ")}`;
   }
 
   function clampAnswerValue(raw) {
@@ -1193,6 +1256,13 @@
       const d = ev && /** @type {CustomEvent} */ (ev).detail;
       if (d && d.ok) ravenCNormsStatus = "ok";
       else ravenCNormsStatus = "failed";
+      updateResults();
+    });
+
+    window.addEventListener("discrepanteLoaded", (ev) => {
+      const d = ev && /** @type {CustomEvent} */ (ev).detail;
+      if (d && d.ok) discrepanteStatus = "ok";
+      else discrepanteStatus = "failed";
       updateResults();
     });
   }
