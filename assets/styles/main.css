@@ -720,82 +720,215 @@ fieldset.field > legend.label{
   border-color: rgba(79,111,95,0.55);
 }
 
-.szondiZones{
+.szondiRuleHint{
+  margin: -2px 0 10px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  opacity: 0.78;
+}
+.szondiNotice{
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(140, 70, 70, 0.28);
+  background: rgba(140, 70, 70, 0.1);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 650;
+}
+.szondiNotice.is-warn{
+  border-color: rgba(150, 110, 40, 0.35);
+  background: rgba(180, 140, 50, 0.12);
+}
+.szondiNotice.is-error{
+  border-color: rgba(140, 70, 70, 0.35);
+  background: rgba(140, 70, 70, 0.12);
+}
+
+.szondiPlanes{
   display: grid;
   grid-template-columns: 1fr;
-  gap: 12px;
+  gap: 16px;
 }
-@media (min-width: 720px){
-  .szondiZones{
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-.szondiZoneCard{
+.szondiPlaneCard{
   border: 1px solid rgba(63, 94, 77, 0.18);
   border-radius: 16px;
-  padding: 12px;
+  padding: 14px;
   background: rgba(255,255,255,0.42);
 }
-.szondiZoneTitle{
-  font-weight: 750;
-  font-size: 13.5px;
-  margin-bottom: 8px;
+.szondiPlaneHead{
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.szondiPlaneTitle{
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+.szondiPlaneMeta{
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
 }
 
-.szondiFactorRow{
+.szondiToolbar{
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 10px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.szondiFactorBar{
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
 }
 .szondiFactorBtn{
   appearance: none;
-  border: 1px solid rgba(63, 94, 77, 0.28);
-  background: rgba(255,255,255,0.7);
+  border: 1px solid rgba(63, 94, 77, 0.24);
+  background: rgba(255,255,255,0.78);
   color: var(--text);
-  border-radius: 999px;
-  min-width: 2.4rem;
-  padding: 7px 9px;
-  font-size: 13px;
-  font-weight: 750;
+  border-radius: 8px;
+  height: 34px;
+  padding: 0;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   cursor: pointer;
 }
-.szondiFactorBtn:hover{
+.szondiFactorBtn:hover:not(:disabled){
   background: rgba(79, 111, 95, 0.14);
 }
-.szondiFactorBtn--clear{
-  min-width: auto;
+.szondiFactorBtn.is-limited,
+.szondiFactorBtn:disabled{
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.szondiUndoBtn{
+  appearance: none;
+  flex: 0 0 auto;
+  border: 1px solid rgba(63, 94, 77, 0.22);
+  background: rgba(255,255,255,0.55);
+  color: var(--text);
+  border-radius: 8px;
+  height: 34px;
+  padding: 0 10px;
+  font-size: 12px;
   font-weight: 650;
-  opacity: 0.85;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.szondiUndoBtn:hover{
+  background: rgba(79, 111, 95, 0.1);
 }
 
-.szondiSlots{
+.szondiPointerHint{
+  margin: 0 0 10px;
+  font-size: 12px;
+  opacity: 0.72;
+  min-height: 1.2em;
+}
+
+.szondiEntryGrid{
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 6px;
 }
+.szondiColHeads,
+.szondiEntryRow{
+  display: grid;
+  grid-template-columns: 22px 1fr 1fr;
+  gap: 8px;
+  align-items: center;
+}
+.szondiRowLabel{
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0.55;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.szondiColHead{
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 4px 0;
+  border-radius: 8px;
+}
+.szondiColHead--sim{
+  background: rgba(79, 111, 95, 0.12);
+  color: rgba(40, 70, 55, 0.95);
+}
+.szondiColHead--anti{
+  background: rgba(140, 70, 70, 0.12);
+  color: rgba(100, 45, 45, 0.95);
+}
+
+.szondiPair{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  padding: 4px;
+  border-radius: 10px;
+  min-height: 40px;
+}
+.szondiPair--sim{
+  background: rgba(79, 111, 95, 0.07);
+  border: 1px solid rgba(79, 111, 95, 0.16);
+}
+.szondiPair--anti{
+  background: rgba(140, 70, 70, 0.07);
+  border: 1px solid rgba(140, 70, 70, 0.16);
+}
+
 .szondiSlot{
   appearance: none;
   border: 1px dashed rgba(63, 94, 77, 0.28);
-  background: rgba(255,255,255,0.35);
-  border-radius: 10px;
-  min-height: 34px;
+  background: rgba(255,255,255,0.45);
+  border-radius: 8px;
+  min-height: 32px;
   font-size: 13px;
-  font-weight: 750;
-  color: rgba(31,41,51,0.35);
+  font-weight: 800;
+  color: transparent;
   cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 .szondiSlot.is-filled{
   border-style: solid;
-  background: rgba(79, 111, 95, 0.14);
+  background: rgba(255,255,255,0.85);
   color: var(--text);
 }
-.szondiZoneMeta{
-  margin-top: 8px;
-  font-size: 12px;
-  opacity: 0.7;
-  text-align: right;
+.szondiSlot.is-pointer{
+  border-style: solid;
+  border-color: rgba(79, 111, 95, 0.75);
+  box-shadow: 0 0 0 2px rgba(79, 111, 95, 0.18);
+  background: rgba(255,255,255,0.9);
+}
+.szondiPair--anti .szondiSlot.is-pointer{
+  border-color: rgba(140, 70, 70, 0.7);
+  box-shadow: 0 0 0 2px rgba(140, 70, 70, 0.16);
+}
+
+@media (max-width: 420px){
+  .szondiFactorBar{
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .szondiToolbar{
+    flex-wrap: wrap;
+  }
+  .szondiUndoBtn{
+    width: 100%;
+  }
+  .szondiColHeads,
+  .szondiEntryRow{
+    gap: 6px;
+  }
 }
 
 .szondiCharts{

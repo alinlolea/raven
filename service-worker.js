@@ -1,5 +1,5 @@
 /* Digital Evaluation PWA service worker (simple offline-first caching). */
-const CACHE_NAME = "digital-evaluation-v4";
+const CACHE_NAME = "digital-evaluation-v6";
 
 function assetUrl(path) {
   return new URL(path, self.location).toString();

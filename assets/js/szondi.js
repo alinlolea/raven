@@ -2,14 +2,18 @@
   "use strict";
 
   const FACTORS = ["h", "s", "e", "hy", "k", "p", "d", "m"];
-  const SLOTS_PER_ZONE = 12;
+  /** 6 series × 2 simpatici + 2 antipatici = 24 entries per plane */
+  const SERIES_ROWS = 6;
+  const PAIR_SIZE = 2;
+  const SLOTS_PER_POLARITY = SERIES_ROWS * PAIR_SIZE;
+  const SLOTS_PER_PLANE = SLOTS_PER_POLARITY * 2;
+  /** 6 series × 1 photo per factor = max 6 images of each letter in the set. */
+  const MAX_PER_FACTOR = 6;
   const VECTOR_ORDER = ["S", "P", "Sch", "C"];
 
-  const ZONES = [
-    { id: "fatadaSim", plane: "fatada", polarity: "sim", title: "Fațadă — Simpatici" },
-    { id: "fatadaAnti", plane: "fatada", polarity: "anti", title: "Fațadă — Antipatici" },
-    { id: "culisaSim", plane: "culisa", polarity: "sim", title: "Culisa — Simpatici" },
-    { id: "culisaAnti", plane: "culisa", polarity: "anti", title: "Culisa — Antipatici" }
+  const PLANES = [
+    { id: "fatada", title: "Fațadă", sim: "fatadaSim", anti: "fatadaAnti" },
+    { id: "culisa", title: "Culisa", sim: "culisaSim", anti: "culisaAnti" }
   ];
 
   /** @type {any} */
@@ -30,7 +34,7 @@
   };
 
   function emptySlots() {
-    return new Array(SLOTS_PER_ZONE).fill("");
+    return new Array(SLOTS_PER_POLARITY).fill("");
   }
 
   /**
@@ -165,8 +169,69 @@
     return node;
   }
 
-  function firstEmptyIndex(slots) {
-    return slots.findIndex((v) => !v);
+  function getPlane(planeId) {
+    return PLANES.find((p) => p.id === planeId) || null;
+  }
+
+  /** Natural fill order: each series row = 2 sim then 2 anti (left → right). */
+  function planeFillOrder(plane) {
+    /** @type {{ zoneId: string, index: number, polarity: "sim"|"anti", row: number, pairIndex: number }[]} */
+    const order = [];
+    for (let row = 0; row < SERIES_ROWS; row++) {
+      for (let i = 0; i < PAIR_SIZE; i++) {
+        order.push({
+          zoneId: plane.sim,
+          index: row * PAIR_SIZE + i,
+          polarity: "sim",
+          row,
+          pairIndex: i
+        });
+      }
+      for (let i = 0; i < PAIR_SIZE; i++) {
+        order.push({
+          zoneId: plane.anti,
+          index: row * PAIR_SIZE + i,
+          polarity: "anti",
+          row,
+          pairIndex: i
+        });
+      }
+    }
+    return order;
+  }
+
+  function nextPointer(plane) {
+    return planeFillOrder(plane).find((p) => !state.zones[p.zoneId][p.index]) || null;
+  }
+
+  function countFilledOnPlane(plane) {
+    return planeFillOrder(plane).filter((p) => state.zones[p.zoneId][p.index]).length;
+  }
+
+  function countFactorOnPlane(planeId, factor) {
+    const plane = getPlane(planeId);
+    if (!plane) return 0;
+    let n = 0;
+    for (const key of [plane.sim, plane.anti]) {
+      for (const v of state.zones[key]) {
+        if (v === factor) n += 1;
+      }
+    }
+    return n;
+  }
+
+  function planeLabel(planeId) {
+    const p = getPlane(planeId);
+    return p ? p.title : planeId;
+  }
+
+  function setNotice(message, kind) {
+    const box = document.getElementById("szondiNotice");
+    if (!box) return;
+    box.textContent = message || "";
+    box.hidden = !message;
+    box.classList.toggle("is-error", kind === "error");
+    box.classList.toggle("is-warn", kind === "warn");
   }
 
   function mount(root) {
@@ -181,10 +246,8 @@
     nav.appendChild(el("div", "viewNavTitle", "SZONDI"));
     root.appendChild(nav);
 
-    // Client data
     const formSec = el("section", "section formSection");
     formSec.appendChild(sectionHeader("Date client", "Obligatoriu: nume și sex. Vârsta e opțională."));
-
     const grid = el("div", "szondiClientGrid");
     grid.appendChild(fieldText("szondiName", "Nume", "e.g. Maria Popescu"));
     grid.appendChild(fieldSex());
@@ -192,21 +255,31 @@
     formSec.appendChild(grid);
     root.appendChild(formSec);
 
-    // Answers
     const ansSec = el("section", "section");
     ansSec.appendChild(
       sectionHeader(
         "Selecții factori",
-        "Apasă o literă pentru a o adăuga în următorul slot gol. Apasă un slot pentru a-l șterge."
+        "Ca în Excel: mai întâi Fațadă (6 serii × 2 sim + 2 anti), apoi Culisa. Pointerul merge stânga → dreapta."
       )
     );
-    const zonesWrap = el("div", "szondiZones");
-    zonesWrap.id = "szondiZones";
-    for (const z of ZONES) zonesWrap.appendChild(buildZoneCard(z));
-    ansSec.appendChild(zonesWrap);
+    const rule = el(
+      "p",
+      "szondiRuleHint",
+      "Limită: 6 serii × 8 poze. Maxim 6 apariții ale aceluiași factor pe un grafic (simpatice + antipatice)."
+    );
+    ansSec.appendChild(rule);
+    const notice = el("div", "szondiNotice");
+    notice.id = "szondiNotice";
+    notice.hidden = true;
+    notice.setAttribute("role", "status");
+    ansSec.appendChild(notice);
+
+    const planesWrap = el("div", "szondiPlanes");
+    planesWrap.id = "szondiPlanes";
+    for (const plane of PLANES) planesWrap.appendChild(buildPlaneCard(plane));
+    ansSec.appendChild(planesWrap);
     root.appendChild(ansSec);
 
-    // Charts
     const chartSec = el("section", "section");
     chartSec.appendChild(sectionHeader("Profil grafic", "Se actualizează în timp real."));
     const charts = el("div", "szondiCharts");
@@ -215,7 +288,6 @@
     chartSec.appendChild(charts);
     root.appendChild(chartSec);
 
-    // Profile texts
     const profSec = el("section", "section");
     profSec.appendChild(sectionHeader("Tabloul profilului", "Interpretări din vectori, pe Fațadă și Culisa."));
     const profGrid = el("div", "szondiProfileGrid");
@@ -290,65 +362,137 @@
     }
   }
 
-  function buildZoneCard(zone) {
-    const card = el("div", "szondiZoneCard");
-    card.dataset.zoneId = zone.id;
-    card.appendChild(el("div", "szondiZoneTitle", zone.title));
+  function buildPlaneCard(plane) {
+    const card = el("div", "szondiPlaneCard");
+    card.dataset.planeId = plane.id;
 
-    const factors = el("div", "szondiFactorRow");
+    const head = el("div", "szondiPlaneHead");
+    head.appendChild(el("div", "szondiPlaneTitle", plane.title));
+    const meta = el("div", "szondiPlaneMeta");
+    meta.id = `szondi-meta-${plane.id}`;
+    meta.textContent = `0 / ${SLOTS_PER_PLANE}`;
+    head.appendChild(meta);
+    card.appendChild(head);
+
+    const toolbar = el("div", "szondiToolbar");
+    const factors = el("div", "szondiFactorBar");
+    factors.id = `szondi-factors-${plane.id}`;
     for (const f of FACTORS) {
       const btn = el("button", "szondiFactorBtn", f);
       btn.type = "button";
-      btn.title = `Adaugă ${f}`;
-      btn.addEventListener("click", () => addFactor(zone.id, f));
+      btn.dataset.factor = f;
+      btn.addEventListener("click", () => addFactor(plane.id, f));
       factors.appendChild(btn);
     }
-    const clear = el("button", "szondiFactorBtn szondiFactorBtn--clear", "Șterge");
-    clear.type = "button";
-    clear.title = "Șterge ultima selecție";
-    clear.addEventListener("click", () => removeLast(zone.id));
-    factors.appendChild(clear);
-    card.appendChild(factors);
+    toolbar.appendChild(factors);
 
-    const slots = el("div", "szondiSlots");
-    slots.id = `szondi-slots-${zone.id}`;
-    for (let i = 0; i < SLOTS_PER_ZONE; i++) {
-      const slot = el("button", "szondiSlot", "·");
-      slot.type = "button";
-      slot.dataset.slotIndex = String(i);
-      slot.addEventListener("click", () => clearSlot(zone.id, i));
-      slots.appendChild(slot);
+    const undo = el("button", "szondiUndoBtn", "Șterge");
+    undo.type = "button";
+    undo.title = "Șterge ultima selecție din acest plan";
+    undo.addEventListener("click", () => removeLast(plane.id));
+    toolbar.appendChild(undo);
+    card.appendChild(toolbar);
+
+    const pointerHint = el("div", "szondiPointerHint");
+    pointerHint.id = `szondi-pointer-${plane.id}`;
+    card.appendChild(pointerHint);
+
+    const grid = el("div", "szondiEntryGrid");
+    const colHeads = el("div", "szondiColHeads");
+    colHeads.appendChild(el("div", "szondiRowLabel", ""));
+    const simHead = el("div", "szondiColHead szondiColHead--sim", "Simpatici");
+    const antiHead = el("div", "szondiColHead szondiColHead--anti", "Antipatici");
+    colHeads.appendChild(simHead);
+    colHeads.appendChild(antiHead);
+    grid.appendChild(colHeads);
+
+    for (let row = 0; row < SERIES_ROWS; row++) {
+      const rowEl = el("div", "szondiEntryRow");
+      rowEl.appendChild(el("div", "szondiRowLabel", String(row + 1)));
+
+      const simPair = el("div", "szondiPair szondiPair--sim");
+      for (let i = 0; i < PAIR_SIZE; i++) {
+        const index = row * PAIR_SIZE + i;
+        simPair.appendChild(makeSlot(plane.sim, index, plane.id, "sim", row, i));
+      }
+      rowEl.appendChild(simPair);
+
+      const antiPair = el("div", "szondiPair szondiPair--anti");
+      for (let i = 0; i < PAIR_SIZE; i++) {
+        const index = row * PAIR_SIZE + i;
+        antiPair.appendChild(makeSlot(plane.anti, index, plane.id, "anti", row, i));
+      }
+      rowEl.appendChild(antiPair);
+
+      grid.appendChild(rowEl);
     }
-    card.appendChild(slots);
 
-    const meta = el("div", "szondiZoneMeta");
-    meta.id = `szondi-meta-${zone.id}`;
-    meta.textContent = "0 / 12";
-    card.appendChild(meta);
+    card.appendChild(grid);
     return card;
   }
 
-  function addFactor(zoneId, factor) {
-    const slots = state.zones[zoneId];
-    const idx = firstEmptyIndex(slots);
-    if (idx < 0) return;
-    slots[idx] = factor;
+  function makeSlot(zoneId, index, planeId, polarity, row, pairIndex) {
+    const slot = el("button", "szondiSlot", "");
+    slot.type = "button";
+    slot.dataset.zoneId = zoneId;
+    slot.dataset.slotIndex = String(index);
+    slot.dataset.planeId = planeId;
+    slot.dataset.polarity = polarity;
+    slot.dataset.row = String(row);
+    slot.dataset.pairIndex = String(pairIndex);
+    slot.setAttribute("aria-label", `${polarity} serie ${row + 1}`);
+    slot.addEventListener("click", () => clearSlot(zoneId, index));
+    return slot;
+  }
+
+  function addFactor(planeId, factor) {
+    const plane = getPlane(planeId);
+    if (!plane) return;
+
+    const pointer = nextPointer(plane);
+    if (!pointer) {
+      setNotice(`${plane.title} este completă (${SLOTS_PER_PLANE}/${SLOTS_PER_PLANE}). Continuă cu ${planeId === "fatada" ? "Culisa" : "profilul"}.`, "warn");
+      return;
+    }
+
+    const used = countFactorOnPlane(planeId, factor);
+    if (used >= MAX_PER_FACTOR) {
+      setNotice(
+        `Nu poți adăuga încă un „${factor}” pe ${plane.title}: maxim ${MAX_PER_FACTOR} pe grafic (simpatice + antipatice).`,
+        "error"
+      );
+      return;
+    }
+
+    state.zones[pointer.zoneId][pointer.index] = factor;
+    const remaining = MAX_PER_FACTOR - used - 1;
+    if (remaining === 0) {
+      setNotice(`Limita pentru „${factor}” pe ${plane.title}: ${MAX_PER_FACTOR}/${MAX_PER_FACTOR}.`, "warn");
+    } else {
+      setNotice("");
+    }
     refresh();
   }
 
   function clearSlot(zoneId, index) {
+    if (!state.zones[zoneId][index]) return;
     state.zones[zoneId][index] = "";
+    setNotice("");
     refresh();
   }
 
-  function removeLast(zoneId) {
-    const slots = state.zones[zoneId];
-    for (let i = slots.length - 1; i >= 0; i--) {
-      if (slots[i]) {
-        slots[i] = "";
+  function removeLast(planeId) {
+    const plane = getPlane(planeId);
+    if (!plane) return;
+    const order = planeFillOrder(plane);
+    for (let i = order.length - 1; i >= 0; i--) {
+      const p = order[i];
+      if (state.zones[p.zoneId][p.index]) {
+        state.zones[p.zoneId][p.index] = "";
         break;
       }
     }
+    setNotice("");
     refresh();
   }
 
@@ -369,15 +513,10 @@
     const signsEl = document.getElementById(`szondi-signs-${planeId}`);
     if (!table || !signsEl) return;
 
-    // Classic Szondi: +6..+1 above, then labels, then -1..-6 below
     const rows = [];
-    for (let level = 6; level >= 1; level--) {
-      rows.push({ kind: "pos", level });
-    }
+    for (let level = 6; level >= 1; level--) rows.push({ kind: "pos", level });
     rows.push({ kind: "label" });
-    for (let level = 1; level <= 6; level++) {
-      rows.push({ kind: "neg", level });
-    }
+    for (let level = 1; level <= 6; level++) rows.push({ kind: "neg", level });
 
     table.innerHTML = "";
     table.style.gridTemplateColumns = `28px repeat(${FACTORS.length}, minmax(0, 1fr))`;
@@ -385,24 +524,17 @@
     for (const row of rows) {
       if (row.kind === "label") {
         table.appendChild(el("div", "szondiChartAxis", "0"));
-        for (const f of FACTORS) {
-          const cell = el("div", "szondiChartFactor", f);
-          table.appendChild(cell);
-        }
+        for (const f of FACTORS) table.appendChild(el("div", "szondiChartFactor", f));
         continue;
       }
-      const axis = el(
-        "div",
-        "szondiChartAxis",
-        row.kind === "pos" ? `+${row.level}` : `-${row.level}`
+      table.appendChild(
+        el("div", "szondiChartAxis", row.kind === "pos" ? `+${row.level}` : `-${row.level}`)
       );
-      table.appendChild(axis);
       for (const f of FACTORS) {
         const cell = el("div", "szondiChartCell");
         const n = row.kind === "pos" ? factors[f].sim : factors[f].anti;
         if (n >= row.level) cell.textContent = "×";
-        if (row.kind === "pos") cell.classList.add("is-pos");
-        else cell.classList.add("is-neg");
+        cell.classList.add(row.kind === "pos" ? "is-pos" : "is-neg");
         if (n >= row.level) cell.classList.add("is-filled");
         table.appendChild(cell);
       }
@@ -416,21 +548,53 @@
     }
   }
 
-  function renderSlots() {
-    for (const z of ZONES) {
-      const slotsEl = document.getElementById(`szondi-slots-${z.id}`);
-      const meta = document.getElementById(`szondi-meta-${z.id}`);
-      const slots = state.zones[z.id];
-      if (!slotsEl) continue;
-      const buttons = slotsEl.querySelectorAll(".szondiSlot");
-      let filled = 0;
-      buttons.forEach((btn, i) => {
-        const v = slots[i];
-        btn.textContent = v || "·";
+  function renderEntries() {
+    for (const plane of PLANES) {
+      const card = document.querySelector(`.szondiPlaneCard[data-plane-id="${plane.id}"]`);
+      const meta = document.getElementById(`szondi-meta-${plane.id}`);
+      const pointerHint = document.getElementById(`szondi-pointer-${plane.id}`);
+      if (!card) continue;
+
+      const pointer = nextPointer(plane);
+      const filled = countFilledOnPlane(plane);
+      if (meta) meta.textContent = `${filled} / ${SLOTS_PER_PLANE}`;
+
+      if (pointerHint) {
+        if (!pointer) {
+          pointerHint.textContent = `${plane.title} completă.`;
+        } else {
+          const side = pointer.polarity === "sim" ? "Simpatici" : "Antipatici";
+          const step = pointer.pairIndex + 1;
+          pointerHint.textContent = `Următorul slot: seria ${pointer.row + 1} · ${side} (${step}/${PAIR_SIZE})`;
+        }
+      }
+
+      card.querySelectorAll(".szondiSlot").forEach((btn) => {
+        const zoneId = btn.getAttribute("data-zone-id");
+        const index = Number(btn.getAttribute("data-slot-index"));
+        const v = state.zones[zoneId][index];
+        btn.textContent = v || "";
         btn.classList.toggle("is-filled", Boolean(v));
-        if (v) filled += 1;
+        const isPointer =
+          pointer &&
+          pointer.zoneId === zoneId &&
+          pointer.index === index;
+        btn.classList.toggle("is-pointer", Boolean(isPointer));
       });
-      if (meta) meta.textContent = `${filled} / ${SLOTS_PER_ZONE}`;
+
+      card.querySelectorAll(".szondiFactorBtn[data-factor]").forEach((btn) => {
+        const f = btn.getAttribute("data-factor");
+        const used = countFactorOnPlane(plane.id, f);
+        const atLimit = used >= MAX_PER_FACTOR;
+        const full = !pointer;
+        btn.classList.toggle("is-limited", atLimit);
+        btn.disabled = atLimit || full;
+        btn.title = atLimit
+          ? `${f}: limită ${used}/${MAX_PER_FACTOR} pe ${plane.title}`
+          : full
+            ? `${plane.title} este completă`
+            : `Adaugă ${f} (${used}/${MAX_PER_FACTOR})`;
+      });
     }
   }
 
@@ -454,7 +618,11 @@
         const signs = (item.signs || []).filter(Boolean).join(" / ") || "—";
         head.innerHTML = `<span>${item.label}</span><span class="szondiProfileSigns">${signs}</span>`;
         card.appendChild(head);
-        const body = el("div", "szondiProfileBody", item.text || "Completează selecțiile pentru a genera interpretarea.");
+        const body = el(
+          "div",
+          "szondiProfileBody",
+          item.text || "Completează selecțiile pentru a genera interpretarea."
+        );
         if (!item.text) body.classList.add("is-empty");
         card.appendChild(body);
         col.appendChild(card);
@@ -465,7 +633,7 @@
 
   function refresh() {
     if (!mounted) return;
-    renderSlots();
+    renderEntries();
     const all = computeAll();
     renderChart("fatada", all.fatada);
     renderChart("culisa", all.culisa);
@@ -484,7 +652,6 @@
       return;
     }
     if (!mounted) mount(root);
-    // Re-bind back button after mount (app.js uses data-nav-home at attach time)
     root.querySelectorAll("[data-nav-home]").forEach((btn) => {
       btn.onclick = () => {
         if (window.DigitalEvaluation && typeof window.DigitalEvaluation.showHome === "function") {
