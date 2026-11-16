@@ -269,7 +269,7 @@
     root.appendChild(ansSec);
 
     const chartSec = el("section", "section");
-    chartSec.appendChild(sectionHeader("Profil grafic"));
+    chartSec.appendChild(sectionHeader("Profil grafic", null, "szondiSectionHeader"));
     const charts = el("div", "szondiCharts");
     charts.appendChild(buildChartShell("fatada", "Fațadă"));
     charts.appendChild(buildChartShell("culisa", "Culisa"));
@@ -277,7 +277,7 @@
     root.appendChild(chartSec);
 
     const profSec = el("section", "section");
-    profSec.appendChild(sectionHeader("Tabloul profilului"));
+    profSec.appendChild(sectionHeader("Tabloul profilului", null, "szondiSectionHeader"));
     const profGrid = el("div", "szondiProfileGrid");
     profGrid.id = "szondiProfileGrid";
     profSec.appendChild(profGrid);
@@ -288,8 +288,8 @@
     refresh();
   }
 
-  function sectionHeader(title, hint) {
-    const h = el("div", "sectionHeader");
+  function sectionHeader(title, hint, extraClass) {
+    const h = el("div", extraClass ? `sectionHeader ${extraClass}` : "sectionHeader");
     h.appendChild(el("div", "sectionTitle", title));
     if (hint) h.appendChild(el("div", "sectionHint", hint));
     return h;
