@@ -1,8 +1,10 @@
 {
+  "id": "/",
   "name": "Digital Evaluation",
-  "short_name": "Evaluation",
-  "description": "Psychological test scoring (PWA).",
+  "short_name": "Digital Evaluation",
+  "description": "Digital Evaluation — psychological test scoring (PWA).",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#F5F1E8",
   "theme_color": "#4F6F5F",
