@@ -128,7 +128,7 @@
     { id: "mcmi-iii", label: "MCMI III", module: null },
     { id: "m-paci", label: "M-PACI", module: null },
     { id: "maci", label: "MACI", module: null },
-    { id: "szondi", label: "SZONDI", module: null },
+    { id: "szondi", label: "SZONDI", module: "szondi" },
     { id: "raven", label: "RAVEN", module: "raven" },
     { id: "sacs", label: "SACS", module: null }
   ];
@@ -147,6 +147,7 @@
     testCatalog: document.getElementById("testCatalog"),
     viewHome: document.getElementById("view-home"),
     viewRaven: document.getElementById("view-raven"),
+    viewSzondi: document.getElementById("view-szondi"),
     viewPlaceholder: document.getElementById("view-placeholder"),
     placeholderTitle: document.getElementById("placeholderTitle"),
     placeholderLead: document.getElementById("placeholderLead"),
@@ -175,6 +176,7 @@
     const views = [
       ["home", dom.viewHome],
       ["raven", dom.viewRaven],
+      ["szondi", dom.viewSzondi],
       ["placeholder", dom.viewPlaceholder]
     ];
     for (const [id, el] of views) {
@@ -188,13 +190,15 @@
         dom.appSubtitle.textContent = "Alege testul pe care vrei să îl evaluezi";
       } else if (viewId === "raven") {
         dom.appSubtitle.textContent = "Scorare RAVEN (CPM / SPM)";
+      } else if (viewId === "szondi") {
+        dom.appSubtitle.textContent = "Scorare SZONDI";
       } else {
         const label = opts && opts.label ? opts.label : "Test";
         dom.appSubtitle.textContent = label;
       }
     }
 
-    if (viewId === "home") {
+    if (viewId === "home" || viewId === "szondi" || viewId === "raven") {
       try {
         window.scrollTo({ top: 0, behavior: "smooth" });
       } catch {
@@ -209,12 +213,23 @@
       showView("raven");
       return;
     }
+    if (entry.module === "szondi") {
+      showView("szondi");
+      if (window.SzondiApp && typeof window.SzondiApp.open === "function") {
+        void window.SzondiApp.open();
+      }
+      return;
+    }
     if (dom.placeholderTitle) dom.placeholderTitle.textContent = entry.label;
     if (dom.placeholderLead) {
       dom.placeholderLead.textContent = `Scorarea pentru ${entry.label} va fi disponibilă în curând.`;
     }
     showView("placeholder", { label: entry.label });
   }
+
+  window.DigitalEvaluation = {
+    showHome: () => showView("home")
+  };
 
   function renderTestCatalog() {
     if (!dom.testCatalog) return;

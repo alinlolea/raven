@@ -688,6 +688,235 @@ fieldset.field > legend.label{
   line-height: 1.35;
 }
 
+/* ---- Szondi ---- */
+.szondiClientGrid{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 640px){
+  .szondiClientGrid{
+    grid-template-columns: 1.4fr 0.7fr 0.7fr;
+  }
+}
+
+.szondiSexRow{
+  display: flex;
+  gap: 8px;
+}
+.szondiSexBtn{
+  appearance: none;
+  flex: 1;
+  border: 1px solid rgba(63, 94, 77, 0.28);
+  background: rgba(255,255,255,0.55);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 11px 10px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.szondiSexBtn.is-active{
+  background: rgba(79, 111, 95, 0.18);
+  border-color: rgba(79,111,95,0.55);
+}
+
+.szondiZones{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 720px){
+  .szondiZones{
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.szondiZoneCard{
+  border: 1px solid rgba(63, 94, 77, 0.18);
+  border-radius: 16px;
+  padding: 12px;
+  background: rgba(255,255,255,0.42);
+}
+.szondiZoneTitle{
+  font-weight: 750;
+  font-size: 13.5px;
+  margin-bottom: 8px;
+}
+
+.szondiFactorRow{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.szondiFactorBtn{
+  appearance: none;
+  border: 1px solid rgba(63, 94, 77, 0.28);
+  background: rgba(255,255,255,0.7);
+  color: var(--text);
+  border-radius: 999px;
+  min-width: 2.4rem;
+  padding: 7px 9px;
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.szondiFactorBtn:hover{
+  background: rgba(79, 111, 95, 0.14);
+}
+.szondiFactorBtn--clear{
+  min-width: auto;
+  font-weight: 650;
+  opacity: 0.85;
+}
+
+.szondiSlots{
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+}
+.szondiSlot{
+  appearance: none;
+  border: 1px dashed rgba(63, 94, 77, 0.28);
+  background: rgba(255,255,255,0.35);
+  border-radius: 10px;
+  min-height: 34px;
+  font-size: 13px;
+  font-weight: 750;
+  color: rgba(31,41,51,0.35);
+  cursor: pointer;
+}
+.szondiSlot.is-filled{
+  border-style: solid;
+  background: rgba(79, 111, 95, 0.14);
+  color: var(--text);
+}
+.szondiZoneMeta{
+  margin-top: 8px;
+  font-size: 12px;
+  opacity: 0.7;
+  text-align: right;
+}
+
+.szondiCharts{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 720px){
+  .szondiCharts{
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.szondiChartCard{
+  border: 1px solid rgba(63, 94, 77, 0.18);
+  border-radius: 16px;
+  padding: 12px;
+  background: rgba(255,255,255,0.42);
+}
+.szondiChartTitle{
+  font-weight: 750;
+  margin-bottom: 8px;
+}
+.szondiChart{
+  display: grid;
+  gap: 2px;
+  font-size: 11px;
+}
+.szondiChartAxis{
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 4px;
+  opacity: 0.65;
+  font-variant-numeric: tabular-nums;
+}
+.szondiChartFactor{
+  text-align: center;
+  font-weight: 800;
+  padding: 4px 0;
+  border-top: 1px solid rgba(63,94,77,0.2);
+  border-bottom: 1px solid rgba(63,94,77,0.2);
+}
+.szondiChartCell{
+  min-height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: transparent;
+  font-weight: 800;
+}
+.szondiChartCell.is-filled{
+  color: var(--text);
+}
+.szondiChartCell.is-pos.is-filled{
+  background: rgba(79, 111, 95, 0.16);
+}
+.szondiChartCell.is-neg.is-filled{
+  background: rgba(140, 70, 70, 0.14);
+}
+
+.szondiSignRow{
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+.szondiSignChip{
+  font-size: 11.5px;
+  border: 1px solid rgba(63, 94, 77, 0.16);
+  border-radius: 10px;
+  padding: 6px 7px;
+  background: rgba(255,255,255,0.5);
+}
+.szondiSignCounts{
+  opacity: 0.65;
+}
+
+.szondiProfileGrid{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 720px){
+  .szondiProfileGrid{
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.szondiProfilePlane{
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+.szondiProfileCard{
+  border: 1px solid rgba(63, 94, 77, 0.16);
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.42);
+  margin-bottom: 8px;
+}
+.szondiProfileHead{
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12.5px;
+  font-weight: 750;
+  margin-bottom: 6px;
+}
+.szondiProfileSigns{
+  opacity: 0.75;
+  white-space: nowrap;
+}
+.szondiProfileBody{
+  font-size: 13px;
+  line-height: 1.45;
+  opacity: 0.92;
+}
+.szondiProfileBody.is-empty{
+  opacity: 0.55;
+  font-style: italic;
+}
+
 @media (prefers-reduced-motion: reduce){
   *{ transition: none !important; }
 }
