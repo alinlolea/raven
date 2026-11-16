@@ -247,7 +247,7 @@
     root.appendChild(nav);
 
     const formSec = el("section", "section formSection");
-    formSec.appendChild(sectionHeader("Date client", "Obligatoriu: nume și sex. Vârsta e opțională."));
+    formSec.appendChild(sectionHeader("Date client"));
     const grid = el("div", "szondiClientGrid");
     grid.appendChild(fieldText("szondiName", "Nume", "e.g. Maria Popescu"));
     grid.appendChild(fieldSex());
@@ -256,18 +256,6 @@
     root.appendChild(formSec);
 
     const ansSec = el("section", "section");
-    ansSec.appendChild(
-      sectionHeader(
-        "Selecții factori",
-        "Ca în Excel: mai întâi Fațadă (6 serii × 2 sim + 2 anti), apoi Culisa. Pointerul merge stânga → dreapta."
-      )
-    );
-    const rule = el(
-      "p",
-      "szondiRuleHint",
-      "Limită: 6 serii × 8 poze. Maxim 6 apariții ale aceluiași factor pe un grafic (simpatice + antipatice)."
-    );
-    ansSec.appendChild(rule);
     const notice = el("div", "szondiNotice");
     notice.id = "szondiNotice";
     notice.hidden = true;
@@ -281,7 +269,7 @@
     root.appendChild(ansSec);
 
     const chartSec = el("section", "section");
-    chartSec.appendChild(sectionHeader("Profil grafic", "Se actualizează în timp real."));
+    chartSec.appendChild(sectionHeader("Profil grafic"));
     const charts = el("div", "szondiCharts");
     charts.appendChild(buildChartShell("fatada", "Fațadă"));
     charts.appendChild(buildChartShell("culisa", "Culisa"));
@@ -289,7 +277,7 @@
     root.appendChild(chartSec);
 
     const profSec = el("section", "section");
-    profSec.appendChild(sectionHeader("Tabloul profilului", "Interpretări din vectori, pe Fațadă și Culisa."));
+    profSec.appendChild(sectionHeader("Tabloul profilului"));
     const profGrid = el("div", "szondiProfileGrid");
     profGrid.id = "szondiProfileGrid";
     profSec.appendChild(profGrid);
@@ -303,7 +291,7 @@
   function sectionHeader(title, hint) {
     const h = el("div", "sectionHeader");
     h.appendChild(el("div", "sectionTitle", title));
-    h.appendChild(el("div", "sectionHint", hint));
+    if (hint) h.appendChild(el("div", "sectionHint", hint));
     return h;
   }
 
@@ -392,10 +380,6 @@
     undo.addEventListener("click", () => removeLast(plane.id));
     toolbar.appendChild(undo);
     card.appendChild(toolbar);
-
-    const pointerHint = el("div", "szondiPointerHint");
-    pointerHint.id = `szondi-pointer-${plane.id}`;
-    card.appendChild(pointerHint);
 
     const grid = el("div", "szondiEntryGrid");
     const colHeads = el("div", "szondiColHeads");
@@ -552,22 +536,11 @@
     for (const plane of PLANES) {
       const card = document.querySelector(`.szondiPlaneCard[data-plane-id="${plane.id}"]`);
       const meta = document.getElementById(`szondi-meta-${plane.id}`);
-      const pointerHint = document.getElementById(`szondi-pointer-${plane.id}`);
       if (!card) continue;
 
       const pointer = nextPointer(plane);
       const filled = countFilledOnPlane(plane);
       if (meta) meta.textContent = `${filled} / ${SLOTS_PER_PLANE}`;
-
-      if (pointerHint) {
-        if (!pointer) {
-          pointerHint.textContent = `${plane.title} completă.`;
-        } else {
-          const side = pointer.polarity === "sim" ? "Simpatici" : "Antipatici";
-          const step = pointer.pairIndex + 1;
-          pointerHint.textContent = `Următorul slot: seria ${pointer.row + 1} · ${side} (${step}/${PAIR_SIZE})`;
-        }
-      }
 
       card.querySelectorAll(".szondiSlot").forEach((btn) => {
         const zoneId = btn.getAttribute("data-zone-id");
