@@ -120,7 +120,21 @@
     "cpm-p": { label: "CPM - P", items: 36, grid: { cols: 3, rows: 12 }, kind: "cpm" }
   };
 
+  /**
+   * Top-level battery catalog (home screen).
+   * `module`: which in-app view to open; only "raven" is implemented for now.
+   */
+  const TEST_CATALOG = [
+    { id: "mcmi-iii", label: "MCMI III", module: null },
+    { id: "m-paci", label: "M-PACI", module: null },
+    { id: "maci", label: "MACI", module: null },
+    { id: "szondi", label: "SZONDI", module: null },
+    { id: "raven", label: "RAVEN", module: "raven" },
+    { id: "sacs", label: "SACS", module: null }
+  ];
+
   const state = {
+    view: "home",
     testType: "standard",
     answers: [],
     answerInputs: [],
@@ -129,6 +143,13 @@
   };
 
   const dom = {
+    appSubtitle: document.getElementById("appSubtitle"),
+    testCatalog: document.getElementById("testCatalog"),
+    viewHome: document.getElementById("view-home"),
+    viewRaven: document.getElementById("view-raven"),
+    viewPlaceholder: document.getElementById("view-placeholder"),
+    placeholderTitle: document.getElementById("placeholderTitle"),
+    placeholderLead: document.getElementById("placeholderLead"),
     testTypeGroup: document.getElementById("testTypeGroup"),
     clientName: document.getElementById("clientName"),
     birthDate: document.getElementById("birthDate"),
@@ -148,6 +169,71 @@
     offlineStatus: document.getElementById("offlineStatus"),
     resultSection: document.getElementById("resultSection")
   };
+
+  function showView(viewId, opts) {
+    state.view = viewId;
+    const views = [
+      ["home", dom.viewHome],
+      ["raven", dom.viewRaven],
+      ["placeholder", dom.viewPlaceholder]
+    ];
+    for (const [id, el] of views) {
+      if (!el) continue;
+      const active = id === viewId;
+      el.hidden = !active;
+    }
+
+    if (dom.appSubtitle) {
+      if (viewId === "home") {
+        dom.appSubtitle.textContent = "Alege testul pe care vrei să îl evaluezi";
+      } else if (viewId === "raven") {
+        dom.appSubtitle.textContent = "Scorare RAVEN (CPM / SPM)";
+      } else {
+        const label = opts && opts.label ? opts.label : "Test";
+        dom.appSubtitle.textContent = label;
+      }
+    }
+
+    if (viewId === "home") {
+      try {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } catch {
+        window.scrollTo(0, 0);
+      }
+    }
+  }
+
+  function openCatalogEntry(entry) {
+    if (!entry) return;
+    if (entry.module === "raven") {
+      showView("raven");
+      return;
+    }
+    if (dom.placeholderTitle) dom.placeholderTitle.textContent = entry.label;
+    if (dom.placeholderLead) {
+      dom.placeholderLead.textContent = `Scorarea pentru ${entry.label} va fi disponibilă în curând.`;
+    }
+    showView("placeholder", { label: entry.label });
+  }
+
+  function renderTestCatalog() {
+    if (!dom.testCatalog) return;
+    dom.testCatalog.innerHTML = "";
+    for (const entry of TEST_CATALOG) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "testCatalogBtn";
+      btn.setAttribute("role", "listitem");
+      btn.dataset.testId = entry.id;
+      const available = entry.module != null;
+      btn.innerHTML =
+        `<span class="testCatalogLabel">${entry.label}</span>` +
+        `<span class="testCatalogMeta">${available ? "Disponibil" : "În curând"}</span>`;
+      if (!available) btn.classList.add("is-soon");
+      btn.addEventListener("click", () => openCatalogEntry(entry));
+      dom.testCatalog.appendChild(btn);
+    }
+  }
 
   function setInterpretationUI(line1, line2, line3Html) {
     if (dom.interpretationLine1) dom.interpretationLine1.textContent = line1;
@@ -609,6 +695,7 @@
   }
 
   function setActiveButton(groupEl, datasetKey, value) {
+    if (!groupEl) return;
     const buttons = Array.from(groupEl.querySelectorAll("button[data-" + datasetKey + "]"));
     for (const btn of buttons) {
       const active = btn.getAttribute("data-" + datasetKey) === value;
@@ -1407,7 +1494,7 @@
 
     const interp = getInterpretationPlainText();
     const summary = [
-      `Digital Raven`,
+      `Digital Evaluation`,
       `Test: ${testLabel}`,
       dom.clientName.value.trim() ? `Client: ${dom.clientName.value.trim()}` : null,
       getDigitsFromBirthField(dom.birthDate?.value || "").length > 0
@@ -1421,7 +1508,7 @@
       .join("\n");
 
     const payload = {
-      title: "Digital Raven",
+      title: "Digital Evaluation",
       text: summary
     };
 
@@ -1451,19 +1538,27 @@
   }
 
   function attachEvents() {
-    dom.testTypeGroup.addEventListener("click", (e) => {
-      const target = e.target.closest("button[data-test-type]");
-      if (!target) return;
-      const next = target.getAttribute("data-test-type");
-      if (!next) return;
-      state.testType = next;
-      syncAgeFromBirthDate();
-      syncSelectionsAndRender();
+    document.querySelectorAll("[data-nav-home]").forEach((btn) => {
+      btn.addEventListener("click", () => showView("home"));
     });
 
-    dom.clientName.addEventListener("input", () => {
-      updateResults();
-    });
+    if (dom.testTypeGroup) {
+      dom.testTypeGroup.addEventListener("click", (e) => {
+        const target = e.target.closest("button[data-test-type]");
+        if (!target) return;
+        const next = target.getAttribute("data-test-type");
+        if (!next) return;
+        state.testType = next;
+        syncAgeFromBirthDate();
+        syncSelectionsAndRender();
+      });
+    }
+
+    if (dom.clientName) {
+      dom.clientName.addEventListener("input", () => {
+        updateResults();
+      });
+    }
     if (dom.birthDate) {
       const supportsBeforeInput =
         typeof InputEvent !== "undefined" && typeof InputEvent.prototype !== "undefined" && "inputType" in InputEvent.prototype;
@@ -1477,8 +1572,8 @@
       dom.birthDate.addEventListener("focus", onBirthDateFocus);
     }
 
-    dom.exportPdfBtn.addEventListener("click", exportPdf);
-    dom.shareBtn.addEventListener("click", share);
+    if (dom.exportPdfBtn) dom.exportPdfBtn.addEventListener("click", exportPdf);
+    if (dom.shareBtn) dom.shareBtn.addEventListener("click", share);
 
     window.addEventListener("ravenNormsLoaded", (ev) => {
       const d = ev && /** @type {CustomEvent} */ (ev).detail;
@@ -1550,6 +1645,8 @@
   }
 
   function init() {
+    renderTestCatalog();
+    showView("home");
     attachEvents();
     initOfflineIndicator();
     registerServiceWorker();

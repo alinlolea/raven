@@ -1,6 +1,6 @@
 {
-  "name": "Digital Raven",
-  "short_name": "Raven",
+  "name": "Digital Evaluation",
+  "short_name": "Evaluation",
   "description": "Psychological test scoring (PWA).",
   "start_url": "./index.html",
   "display": "standalone",

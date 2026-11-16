@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
 
-    <title>Digital Raven</title>
+    <title>Digital Evaluation</title>
 
     <link rel="manifest" href="./manifest.json" />
     <link rel="icon" href="./assets/icons/icon-192.png" sizes="192x192" />
     <link rel="apple-touch-icon" href="./assets/icons/icon-192.png" />
 
     <meta name="theme-color" content="#4F6F5F" />
-    <meta name="description" content="Digital Raven psychological test scoring (PWA)." />
+    <meta name="description" content="Digital Evaluation psychological test scoring (PWA)." />
 
     <link rel="stylesheet" href="./assets/styles/main.css" />
   </head>
@@ -20,145 +20,180 @@
     <main class="page">
       <div class="card" id="mainContainer">
         <header class="brand">
-          <img class="logo" src="./assets/icons/icon-512.png" alt="Digital Raven logo" width="88" height="88" />
+          <img class="logo" src="./assets/icons/icon-512.png" alt="Digital Evaluation logo" width="88" height="88" />
           <div class="brandText">
-            <h1 class="title">Digital Raven</h1>
-            <p class="subtitle">Psychological IQ scoring</p>
+            <h1 class="title">Digital Evaluation</h1>
+            <p class="subtitle" id="appSubtitle">Alege testul pe care vrei să îl evaluezi</p>
           </div>
         </header>
 
-        <section class="section">
-          <div class="sectionHeader">
-            <div class="sectionTitle">Test type</div>
-            <div class="sectionHint">Select the questionnaire version.</div>
-          </div>
-          <div
-            class="segmented segmented--testTypes"
-            role="radiogroup"
-            aria-label="Test type selection"
-            id="testTypeGroup"
-          >
-            <button type="button" class="segBtn" data-test-type="cpm-c" aria-pressed="false">CPM - C</button>
-            <button type="button" class="segBtn" data-test-type="cpm-p" aria-pressed="false">CPM - P</button>
-            <button type="button" class="segBtn is-active" data-test-type="standard" aria-pressed="true">
-              SPM - C
+        <!-- Home: test catalog -->
+        <div id="view-home" class="view" data-view="home">
+          <section class="section">
+            <div class="sectionHeader">
+              <div class="sectionTitle">Teste disponibile</div>
+              <div class="sectionHint">Selectează un test pentru a începe scorarea.</div>
+            </div>
+            <div class="testCatalog" id="testCatalog" role="list"></div>
+          </section>
+        </div>
+
+        <!-- Raven scoring (secondary) -->
+        <div id="view-raven" class="view" data-view="raven" hidden>
+          <div class="viewNav">
+            <button type="button" class="btnBack" id="backFromRavenBtn" data-nav-home>
+              ← Înapoi la teste
             </button>
-            <button type="button" class="segBtn" data-test-type="spm-p" aria-pressed="false">SPM - P</button>
-            <button type="button" class="segBtn" data-test-type="spm-plus" aria-pressed="false">SPM +</button>
-          </div>
-        </section>
-
-        <section class="section formSection">
-          <div class="field">
-            <label class="label" for="clientName">Client name</label>
-            <input
-              class="input"
-              id="clientName"
-              type="text"
-              autocomplete="off"
-              placeholder="e.g. Maria Popescu"
-            />
+            <div class="viewNavTitle">RAVEN</div>
           </div>
 
-          <div class="field">
-            <label class="label" for="birthDate">Data nașterii</label>
-            <input
-              class="input input--birthMask"
-              id="birthDate"
-              type="text"
-              inputmode="numeric"
-              autocomplete="off"
-              autocorrect="off"
-              autocapitalize="off"
-              spellcheck="false"
-              value="__/__/____"
-              placeholder="__/__/____"
-              aria-describedby="ageGroupLine ageWarnLine"
-              title="Introduceți doar cifrele; formularul este zz/ll/aaaa."
-            />
-          </div>
+          <section class="section">
+            <div class="sectionHeader">
+              <div class="sectionTitle">Test type</div>
+              <div class="sectionHint">Select the questionnaire version.</div>
+            </div>
+            <div
+              class="segmented segmented--testTypes"
+              role="radiogroup"
+              aria-label="Test type selection"
+              id="testTypeGroup"
+            >
+              <button type="button" class="segBtn" data-test-type="cpm-c" aria-pressed="false">CPM - C</button>
+              <button type="button" class="segBtn" data-test-type="cpm-p" aria-pressed="false">CPM - P</button>
+              <button type="button" class="segBtn is-active" data-test-type="standard" aria-pressed="true">
+                SPM - C
+              </button>
+              <button type="button" class="segBtn" data-test-type="spm-p" aria-pressed="false">SPM - P</button>
+              <button type="button" class="segBtn" data-test-type="spm-plus" aria-pressed="false">SPM +</button>
+            </div>
+          </section>
 
-          <fieldset class="field fieldAge">
-            <legend class="label">Vârstă (calculată automat)</legend>
-            <div class="ageRow">
-              <div class="agePart">
-                <input
-                  class="input inputAge inputAge--computed"
-                  id="ageYears"
-                  name="ageYears"
-                  type="text"
-                  inputmode="numeric"
-                  pattern="[0-9]*"
-                  autocomplete="off"
-                  maxlength="3"
-                  placeholder="—"
-                  aria-label="Ani"
-                  aria-describedby="ageGroupLine ageWarnLine"
-                  disabled
-                />
-                <span class="ageSuffix" aria-hidden="true">ani</span>
+          <section class="section formSection">
+            <div class="field">
+              <label class="label" for="clientName">Client name</label>
+              <input
+                class="input"
+                id="clientName"
+                type="text"
+                autocomplete="off"
+                placeholder="e.g. Maria Popescu"
+              />
+            </div>
+
+            <div class="field">
+              <label class="label" for="birthDate">Data nașterii</label>
+              <input
+                class="input input--birthMask"
+                id="birthDate"
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+                value="__/__/____"
+                placeholder="__/__/____"
+                aria-describedby="ageGroupLine ageWarnLine"
+                title="Introduceți doar cifrele; formularul este zz/ll/aaaa."
+              />
+            </div>
+
+            <fieldset class="field fieldAge">
+              <legend class="label">Vârstă (calculată automat)</legend>
+              <div class="ageRow">
+                <div class="agePart">
+                  <input
+                    class="input inputAge inputAge--computed"
+                    id="ageYears"
+                    name="ageYears"
+                    type="text"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
+                    autocomplete="off"
+                    maxlength="3"
+                    placeholder="—"
+                    aria-label="Ani"
+                    aria-describedby="ageGroupLine ageWarnLine"
+                    disabled
+                  />
+                  <span class="ageSuffix" aria-hidden="true">ani</span>
+                </div>
+                <div class="agePart">
+                  <input
+                    class="input inputAge inputAge--computed"
+                    id="ageMonths"
+                    name="ageMonths"
+                    type="text"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
+                    autocomplete="off"
+                    maxlength="2"
+                    placeholder="—"
+                    aria-label="Luni"
+                    aria-describedby="ageGroupLine ageWarnLine"
+                    disabled
+                  />
+                  <span class="ageSuffix" aria-hidden="true">luni</span>
+                </div>
               </div>
-              <div class="agePart">
-                <input
-                  class="input inputAge inputAge--computed"
-                  id="ageMonths"
-                  name="ageMonths"
-                  type="text"
-                  inputmode="numeric"
-                  pattern="[0-9]*"
-                  autocomplete="off"
-                  maxlength="2"
-                  placeholder="—"
-                  aria-label="Luni"
-                  aria-describedby="ageGroupLine ageWarnLine"
-                  disabled
-                />
-                <span class="ageSuffix" aria-hidden="true">luni</span>
+              <p class="ageMeta" id="ageGroupLine" aria-live="polite"></p>
+              <p class="ageMeta ageMeta--warn" id="ageWarnLine" hidden></p>
+            </fieldset>
+          </section>
+
+          <section class="section">
+            <div class="sectionHeader">
+              <div class="sectionTitle">Answers</div>
+              <div class="sectionHint" id="answersHint">Enter values from 1 to 8.</div>
+            </div>
+
+            <div id="answersArea" class="answersArea" aria-live="polite"></div>
+          </section>
+
+          <section class="section resultsSection" id="resultSection">
+            <div class="sectionHeader">
+              <div class="sectionTitle">Result</div>
+              <div class="sectionHint">Updates when data nașterii is valid for the selected test and at least one correct answer is present.</div>
+            </div>
+
+            <div class="resultGrid">
+              <div class="resultCard">
+                <div class="resultLabel">Raw score</div>
+                <div class="resultValue" id="raw-score">-</div>
+              </div>
+              <div class="resultCard">
+                <div class="resultLabel">Interpretation</div>
+                <div class="resultText resultText--stacked" id="interpretation">
+                  <div class="interpLine" id="interpretation-line1">-</div>
+                  <div class="interpLine interpLine--nivel" id="interpretation-line2" hidden></div>
+                  <div class="interpLine interpLine--disc" id="interpretation-line3" hidden></div>
+                </div>
               </div>
             </div>
-            <p class="ageMeta" id="ageGroupLine" aria-live="polite"></p>
-            <p class="ageMeta ageMeta--warn" id="ageWarnLine" hidden></p>
-          </fieldset>
-        </section>
+          </section>
 
-        <section class="section">
-          <div class="sectionHeader">
-            <div class="sectionTitle">Answers</div>
-            <div class="sectionHint" id="answersHint">Enter values from 1 to 8.</div>
-          </div>
-
-          <div id="answersArea" class="answersArea" aria-live="polite"></div>
-        </section>
-
-        <section class="section resultsSection" id="resultSection">
-          <div class="sectionHeader">
-            <div class="sectionTitle">Result</div>
-            <div class="sectionHint">Updates when data nașterii is valid for the selected test and at least one correct answer is present.</div>
-          </div>
-
-          <div class="resultGrid">
-            <div class="resultCard">
-              <div class="resultLabel">Raw score</div>
-              <div class="resultValue" id="raw-score">-</div>
+          <section class="section actionsSection">
+            <div class="actionsRow">
+              <button type="button" class="btn btnPrimary" id="exportPdfBtn">Export PDF</button>
+              <button type="button" class="btn btnSecondary" id="shareBtn">Share</button>
             </div>
-            <div class="resultCard">
-              <div class="resultLabel">Interpretation</div>
-              <div class="resultText resultText--stacked" id="interpretation">
-                <div class="interpLine" id="interpretation-line1">-</div>
-                <div class="interpLine interpLine--nivel" id="interpretation-line2" hidden></div>
-                <div class="interpLine interpLine--disc" id="interpretation-line3" hidden></div>
-              </div>
-            </div>
-          </div>
-        </section>
+            <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+          </section>
+        </div>
 
-        <section class="section actionsSection">
-          <div class="actionsRow">
-            <button type="button" class="btn btnPrimary" id="exportPdfBtn">Export PDF</button>
-            <button type="button" class="btn btnSecondary" id="shareBtn">Share</button>
+        <!-- Placeholder for tests not yet implemented -->
+        <div id="view-placeholder" class="view" data-view="placeholder" hidden>
+          <div class="viewNav">
+            <button type="button" class="btnBack" id="backFromPlaceholderBtn" data-nav-home>
+              ← Înapoi la teste
+            </button>
+            <div class="viewNavTitle" id="placeholderTitle">—</div>
           </div>
-          <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
-        </section>
+          <section class="section placeholderSection">
+            <p class="placeholderLead" id="placeholderLead">Scorarea pentru acest test va fi disponibilă în curând.</p>
+            <p class="placeholderHint">Poți folosi în prezent modulul RAVEN din lista de teste.</p>
+          </section>
+        </div>
 
         <footer class="footer">
           <span id="offlineStatus" class="statusPill">Checking offline…</span>
@@ -174,4 +209,3 @@
     <script src="./assets/js/app.js" defer></script>
   </body>
 </html>
-
