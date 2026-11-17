@@ -130,7 +130,8 @@
     { id: "maci", label: "MACI", module: null },
     { id: "szondi", label: "SZONDI", module: "szondi" },
     { id: "raven", label: "RAVEN", module: "raven" },
-    { id: "sacs", label: "SACS", module: null }
+    { id: "sacs", label: "SACS", module: null },
+    { id: "tscc", label: "TSCC", module: null }
   ];
 
   const state = {
