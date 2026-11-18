@@ -1,5 +1,5 @@
 /* Digital Evaluation PWA service worker (simple offline-first caching). */
-const CACHE_NAME = "digital-evaluation-v8";
+const CACHE_NAME = "digital-evaluation-v9";
 
 function assetUrl(path) {
   return new URL(path, self.location).toString();
@@ -40,6 +40,12 @@ self.addEventListener("install", (event) => {
   self.skipWaiting();
 });
 
+self.addEventListener("message", (event) => {
+  if (event && event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
@@ -59,6 +65,15 @@ function isNavigationRequest(request) {
   if (request.mode === "navigate") return true;
   const accept = request.headers.get("accept") || "";
   return accept.includes("text/html");
+}
+
+function isAppShellRequest(request) {
+  // Network-first for app code + data so catalog/UI updates are not stuck
+  // behind an aggressive cache-first shell.
+  const dest = request.destination;
+  if (dest === "script" || dest === "style" || dest === "document") return true;
+  const url = new URL(request.url);
+  return url.pathname.endsWith(".csv") || url.pathname.endsWith(".json");
 }
 
 self.addEventListener("fetch", (event) => {
@@ -86,7 +101,26 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Cache-first for static assets.
+  // Network-first for app code + data (avoids "stuck" updates on aggressive caches),
+  // fallback to cache when offline.
+  if (isAppShellRequest(request)) {
+    event.respondWith(
+      (async () => {
+        try {
+          const res = await fetch(request, { cache: "no-store" });
+          const cache = await caches.open(CACHE_NAME);
+          cache.put(request, res.clone());
+          return res;
+        } catch {
+          const cached = await caches.match(request);
+          return cached || Response.error();
+        }
+      })()
+    );
+    return;
+  }
+
+  // Cache-first for other static assets (icons/images).
   event.respondWith(
     (async () => {
       const cached = await caches.match(request);

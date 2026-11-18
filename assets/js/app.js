@@ -1627,7 +1627,8 @@
   function registerServiceWorker() {
     if (!("serviceWorker" in navigator)) return;
     navigator.serviceWorker
-      .register("./service-worker.js")
+      // Bypass HTTP cache for the SW script itself so updates are noticed promptly.
+      .register("./service-worker.js", { updateViaCache: "none" })
       .then((reg) => {
         // Ask the browser to check for an updated SW on load.
         try { reg.update(); } catch {}
