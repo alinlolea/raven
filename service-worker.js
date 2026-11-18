@@ -1,5 +1,5 @@
 /* Digital Evaluation PWA service worker (simple offline-first caching). */
-const CACHE_NAME = "digital-evaluation-v9";
+const CACHE_NAME = "digital-evaluation-v10";
 
 function assetUrl(path) {
   return new URL(path, self.location).toString();
@@ -17,10 +17,12 @@ const CORE_ASSETS = [
   assetUrl("./assets/js/discrepante.js"),
   assetUrl("./assets/js/vendor/pdf-lib.min.js"),
   assetUrl("./assets/js/szondi.js"),
+  assetUrl("./assets/js/tscc.js"),
   assetUrl("./assets/data/Raven.csv"),
   assetUrl("./assets/data/RavenC.csv"),
   assetUrl("./assets/data/Discrepante.csv"),
   assetUrl("./assets/data/szondi-vectori.json"),
+  assetUrl("./assets/data/tscc-norms.json"),
   assetUrl("./assets/images/logo.png"),
   assetUrl("./assets/icons/icon-192.png"),
   assetUrl("./assets/icons/icon-512.png")

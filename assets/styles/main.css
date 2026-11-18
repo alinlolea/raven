@@ -1066,6 +1066,178 @@ fieldset.field > legend.label{
   font-style: italic;
 }
 
+/* ---- TSCC ---- */
+.tsccClientGrid{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 640px){
+  .tsccClientGrid{
+    grid-template-columns: 1.4fr 0.7fr 0.7fr;
+  }
+}
+.tsccSexRow{
+  display: flex;
+  gap: 8px;
+}
+.tsccSexBtn{
+  appearance: none;
+  flex: 1;
+  border: 1px solid rgba(63, 94, 77, 0.28);
+  background: rgba(255,255,255,0.55);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 11px 10px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.tsccSexBtn.is-active{
+  background: rgba(79, 111, 95, 0.18);
+  border-color: rgba(79,111,95,0.55);
+}
+.tsccBandLine{
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 650;
+  opacity: 0.9;
+}
+.tsccBandLine.is-warn{ color: #8a5a12; }
+.tsccBandLine.is-error{ color: #8a2f2f; }
+.tsccNotice{
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(140, 70, 70, 0.28);
+  background: rgba(140, 70, 70, 0.1);
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 650;
+}
+.tsccNotice.is-warn{
+  border-color: rgba(150, 110, 40, 0.35);
+  background: rgba(180, 140, 50, 0.12);
+}
+.tsccNotice.is-error{
+  border-color: rgba(140, 70, 70, 0.35);
+  background: rgba(140, 70, 70, 0.12);
+}
+.tsccItemList{
+  display: grid;
+  gap: 8px;
+}
+.tsccItemRow{
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 8px;
+  align-items: center;
+}
+.tsccItemNum{
+  font-weight: 750;
+  font-size: 13px;
+  text-align: right;
+  opacity: 0.8;
+}
+.tsccChoices{
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+.tsccChoiceBtn{
+  appearance: none;
+  border: 1px solid rgba(63, 94, 77, 0.25);
+  background: rgba(255,255,255,0.55);
+  border-radius: 10px;
+  padding: 8px 0;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--text);
+}
+.tsccChoiceBtn.is-active{
+  background: rgba(79, 111, 95, 0.2);
+  border-color: rgba(79,111,95,0.55);
+}
+.tsccSummary{ margin-bottom: 10px; }
+.tsccOverall{
+  display: inline-block;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid rgba(63,94,77,0.2);
+}
+.tsccOverall.is-valid{
+  background: rgba(0, 176, 80, 0.16);
+  border-color: rgba(0, 176, 80, 0.35);
+}
+.tsccOverall.is-invalid{
+  background: rgba(255, 0, 0, 0.12);
+  border-color: rgba(255, 0, 0, 0.35);
+}
+.tsccResultsWrap{ overflow-x: auto; }
+.tsccResultsTable{
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.tsccResultsTable th,
+.tsccResultsTable td{
+  border-bottom: 1px solid rgba(63,94,77,0.14);
+  padding: 8px 6px;
+  text-align: left;
+  white-space: nowrap;
+}
+.tsccResultsTable th{
+  font-size: 12px;
+  opacity: 0.75;
+  font-weight: 700;
+}
+.tsccScaleName{ font-weight: 750; }
+.tsccT.is-warn,
+.tsccResultsTable tr.is-warn .tsccT{
+  background: #ffc000;
+  color: #1a1a1a;
+  font-weight: 800;
+}
+.tsccT.is-clinical,
+.tsccResultsTable tr.is-clinical .tsccT{
+  background: #ff0000;
+  color: #fff;
+  font-weight: 800;
+}
+.tsccValid{
+  color: #1f7a3a;
+  font-weight: 750;
+}
+.tsccInvalid{
+  color: #b00000;
+  font-weight: 800;
+}
+.tsccInterp{
+  display: grid;
+  gap: 10px;
+}
+.tsccInterpCard{
+  border: 1px solid rgba(63,94,77,0.16);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.42);
+}
+.tsccInterpCard.is-warn{ border-color: rgba(255,192,0,0.65); }
+.tsccInterpCard.is-clinical{ border-color: rgba(255,0,0,0.45); }
+.tsccInterpTitle{
+  font-weight: 800;
+  margin-bottom: 4px;
+  font-size: 13.5px;
+}
+.tsccInterpBody,
+.tsccInterpEmpty{
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  opacity: 0.9;
+}
+
 @media (prefers-reduced-motion: reduce){
   *{ transition: none !important; }
 }

@@ -6,4 +6,7 @@ Thumbs.db
 .env
 .vscode/
 *.log
+package.json
+package-lock.json
+_tscc_dump.json
 

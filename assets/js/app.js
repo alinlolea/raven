@@ -131,7 +131,7 @@
     { id: "szondi", label: "SZONDI", module: "szondi" },
     { id: "raven", label: "RAVEN", module: "raven" },
     { id: "sacs", label: "SACS", module: null },
-    { id: "tscc", label: "TSCC", module: null }
+    { id: "tscc", label: "TSCC", module: "tscc" }
   ];
 
   const state = {
@@ -149,6 +149,7 @@
     viewHome: document.getElementById("view-home"),
     viewRaven: document.getElementById("view-raven"),
     viewSzondi: document.getElementById("view-szondi"),
+    viewTscc: document.getElementById("view-tscc"),
     viewPlaceholder: document.getElementById("view-placeholder"),
     placeholderTitle: document.getElementById("placeholderTitle"),
     placeholderLead: document.getElementById("placeholderLead"),
@@ -178,6 +179,7 @@
       ["home", dom.viewHome],
       ["raven", dom.viewRaven],
       ["szondi", dom.viewSzondi],
+      ["tscc", dom.viewTscc],
       ["placeholder", dom.viewPlaceholder]
     ];
     for (const [id, el] of views) {
@@ -193,13 +195,15 @@
         dom.appSubtitle.textContent = "Scorare RAVEN (CPM / SPM)";
       } else if (viewId === "szondi") {
         dom.appSubtitle.textContent = "Scorare SZONDI";
+      } else if (viewId === "tscc") {
+        dom.appSubtitle.textContent = "Scorare TSCC";
       } else {
         const label = opts && opts.label ? opts.label : "Test";
         dom.appSubtitle.textContent = label;
       }
     }
 
-    if (viewId === "home" || viewId === "szondi" || viewId === "raven") {
+    if (viewId === "home" || viewId === "szondi" || viewId === "raven" || viewId === "tscc") {
       try {
         window.scrollTo({ top: 0, behavior: "smooth" });
       } catch {
@@ -218,6 +222,13 @@
       showView("szondi");
       if (window.SzondiApp && typeof window.SzondiApp.open === "function") {
         void window.SzondiApp.open();
+      }
+      return;
+    }
+    if (entry.module === "tscc") {
+      showView("tscc");
+      if (window.TsccApp && typeof window.TsccApp.open === "function") {
+        void window.TsccApp.open();
       }
       return;
     }
